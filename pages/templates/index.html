@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>옵션 발주 템플릿 관리</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      color: #2c3e50;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e1e8ed;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #718096;
+      margin-bottom: 32px;
+    }
+
+    .template-section {
+      margin-bottom: 32px;
+    }
+
+    .template-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .template-section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .template-section h2::before {
+      content: '';
+      width: 4px;
+      height: 18px;
+      background: #3b82f6;
+      border-radius: 2px;
+    }
+
+    .variable-list {
+      background: #f7fafc;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      color: #4a5568;
+    }
+
+    .variable-list strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #1a202c;
+    }
+
+    .variable-list code {
+      background: #edf2f7;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #3b82f6;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 300px;
+      padding: 16px;
+      border: 1px solid #e1e8ed;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: Pretendard, sans-serif;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: Pretendard, sans-serif;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: #ffffff;
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      box-shadow: 0 4px 6px rgba(59,130,246,0.3);
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      color: #64748b;
+      border: 1px solid #e1e8ed;
+    }
+
+    .btn-secondary:hover {
+      background: #f7fafc;
+      border-color: #cbd5e0;
+    }
+
+    @media (max-width: 768px) {
+      .button-group {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>📝 옵션 발주 템플릿 관리</h1>
+  <p class="subtitle">발주처 및 시공점 카카오톡 메시지 템플릿을 관리합니다.</p>
+
+  <div class="template-section">
+    <h2>발주처 템플릿</h2>
+    <div class="variable-list">
+      <strong>사용 가능한 변수:</strong>
+      <code>{{접수번호}}</code>, <code>{{사고일시}}</code>, <code>{{고객명}}</code>, <code>{{연락처}}</code>, 
+      <code>{{차량번호}}</code>, <code>{{VIN}}</code>, <code>{{차명}}</code>, <code>{{면책금}}</code>, 
+      <code>{{면책금방식}}</code>, <code>{{보험사}}</code>, <code>{{파손부위}}</code>, <code>{{사고위치}}</code>,
+      <code>{{HUD}}</code>, <code>{{차음유리}}</code>, <code>{{카메라}}</code>, <code>{{레인센서}}</code>
+    </div>
+    <textarea id="vendorTemplate" placeholder="발주처 메시지 템플릿을 입력하세요.&#10;예: 차량: {{차명}}&#10;VIN: {{VIN}}&#10;..."></textarea>
+  </div>
+
+  <div class="template-section">
+    <h2>시공점 템플릿</h2>
+    <div class="variable-list">
+      <strong>사용 가능한 변수:</strong>
+      <code>{{접수번호}}</code>, <code>{{사고일시}}</code>, <code>{{고객명}}</code>, <code>{{연락처}}</code>, 
+      <code>{{차량번호}}</code>, <code>{{VIN}}</code>, <code>{{차명}}</code>, <code>{{면책금}}</code>, 
+      <code>{{면책금방식}}</code>, <code>{{보험사}}</code>, <code>{{파손부위}}</code>, <code>{{사고위치}}</code>,
+      <code>{{HUD}}</code>, <code>{{차음유리}}</code>, <code>{{카메라}}</code>, <code>{{레인센서}}</code>
+    </div>
+    <textarea id="installerTemplate" placeholder="시공점 메시지 템플릿을 입력하세요.&#10;예: [작업지시]&#10;차량: {{차명}}&#10;..."></textarea>
+  </div>
+
+  <div class="button-group">
+    <button class="btn-primary" onclick="saveTemplates()">
+      <span>💾</span>
+      <span>템플릿 저장하기</span>
+    </button>
+    <button class="btn-secondary" onclick="loadTemplates()">
+      <span>📥</span>
+      <span>템플릿 불러오기</span>
+    </button>
+  </div>
+</div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Supabase 초기화 -->
+<script src="/js/supabaseclient.js"></script>
+
+<script>
+// 템플릿 타입 상수 정의 (DB에 저장된 실제 값 기준)
+const TEMPLATE_TYPE = {
+  ISSUER: '발주처',    // 발주처 템플릿
+  WORKSHOP: '시공점'   // 시공점 템플릿
+};
+
+// Error handling helper
+function checkError(error) {
+  if (error) {
+    console.error("Supabase error:", error);
+    alert("데이터 저장 중 오류가 발생했습니다.");
+    throw error;
+  }
+}
+
+async function saveTemplates() {
+  const vendorTemplate = document.getElementById("vendorTemplate").value.trim();
+  const installerTemplate = document.getElementById("installerTemplate").value.trim();
+
+  if (!vendorTemplate || !installerTemplate) {
+    alert("발주처 및 시공점 템플릿을 모두 입력해주세요.");
+    return;
+  }
+
+  if (!window.supabaseClient) {
+    alert("Supabase client not available");
+    return;
+  }
+  const client = window.supabaseClient;
+
+  try {
+    // 발주처 템플릿 저장 (type = '발주처')
+    // 기존 템플릿은 overwrite (upsert 사용)
+    const { error: vendorError } = await client
+      .from("message_templates")
+      .upsert({
+        type: TEMPLATE_TYPE.ISSUER,  // '발주처'
+        content: vendorTemplate,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'type'
+      });
+
+    checkError(vendorError);
+
+    // 시공점 템플릿 저장 (type = '시공점')
+    // 기존 템플릿은 overwrite (upsert 사용)
+    const { error: installerError } = await client
+      .from("message_templates")
+      .upsert({
+        type: TEMPLATE_TYPE.WORKSHOP,  // '시공점'
+        content: installerTemplate,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'type'
+      });
+
+    checkError(installerError);
+
+    alert("✅ 템플릿이 성공적으로 저장되었습니다!");
+  } catch (error) {
+    console.error("저장 오류:", error);
+    alert("❌ 템플릿 저장에 실패했습니다.");
+  }
+}
+
+async function loadTemplates() {
+  if (!window.supabaseClient) {
+    alert("Supabase client not available");
+    return;
+  }
+  const client = window.supabaseClient;
+  if (!client) {
+    console.warn("Supabase client not available");
+    return;
+  }
+
+  try {
+    // 발주처 템플릿 로드 (type = '발주처')
+    const { data: vendorData, error: vendorError } = await client
+      .from("message_templates")
+      .select("content")
+      .eq("type", TEMPLATE_TYPE.ISSUER)  // '발주처'
+      .single();
+
+    if (!vendorError && vendorData && vendorData.content) {
+      document.getElementById("vendorTemplate").value = vendorData.content;
+    }
+
+    // 시공점 템플릿 로드 (type = '시공점')
+    const { data: installerData, error: installerError } = await client
+      .from("message_templates")
+      .select("content")
+      .eq("type", TEMPLATE_TYPE.WORKSHOP)  // '시공점'
+      .single();
+
+    if (!installerError && installerData && installerData.content) {
+      document.getElementById("installerTemplate").value = installerData.content;
+    }
+  } catch (error) {
+    console.log("템플릿 불러오기 오류:", error.message);
+  }
+}
+
+// 페이지 로드 시 템플릿 불러오기
+document.addEventListener('DOMContentLoaded', function() {
+  loadTemplates();
+});
+</script>
+
+</body>
+</html>
+

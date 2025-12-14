@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>접수 현황</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <!-- XLSX library for Excel export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      color: #2c3e50;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e1e8ed;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    .btn-new {
+      padding: 10px 20px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-new:hover {
+      background: #2563eb;
+      box-shadow: 0 4px 6px rgba(59,130,246,0.3);
+    }
+
+    .date-filter-box {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e1e8ed;
+    }
+
+    .date-filter-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .date-filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .date-filter-item label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #4a5568;
+    }
+
+    .date-filter-item input {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .date-filter-item input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .btn-filter-clear {
+      padding: 8px 16px;
+      background: #6b7280;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-filter-clear:hover {
+      background: #4b5563;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e1e8ed;
+    }
+
+    .filter-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .filter-item label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #4a5568;
+    }
+
+    .filter-item select {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      font-family: inherit;
+      background: white;
+      cursor: pointer;
+    }
+
+    .filter-item select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .btn-export {
+      padding: 8px 16px;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-export:hover {
+      background: #059669;
+    }
+
+    .search-box {
+      margin-bottom: 20px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+      border: 1px solid #e1e8ed;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead {
+      background: #f7fafc;
+      border-bottom: 2px solid #e1e8ed;
+    }
+
+    th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #4a5568;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e1e8ed;
+    }
+
+    tbody tr {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover {
+      background: #f7fafc;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .status-new {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .status-assigned {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-progress {
+      background: #fed7aa;
+      color: #9a3412;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-settled {
+      background: #10b981;
+      color: white;
+    }
+
+    .status-received {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .status-assigned {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-scheduled {
+      background: #e9d5ff;
+      color: #6b21a8;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-pending {
+      background: #fed7aa;
+      color: #9a3412;
+    }
+
+    .status-closed {
+      background: #4b5563;
+      color: white;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+
+    .empty-state p {
+      font-size: 16px;
+      margin-top: 12px;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 20px;
+      padding: 16px 0;
+    }
+
+    .pagination button {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .pagination button:hover:not(:disabled) {
+      background: #f7fafc;
+      border-color: #3b82f6;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination button.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .pagination-info {
+      margin: 0 12px;
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 16px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn-new {
+        width: 100%;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 8px 6px;
+      }
+
+      .mobile-hide {
+        display: none;
+      }
+    }
+
+    .btn-delete {
+      padding: 4px 8px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+      transform: scale(1.05);
+    }
+
+    .btn-delete:active {
+      transform: scale(0.95);
+    }
+
+    tbody tr td:last-child {
+      cursor: default;
+    }
+
+    /* 통계 카드 스타일 */
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid #e1e8ed;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: all 0.2s;
+    }
+
+    .stat-card.clickable-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+      border-color: #3b82f6;
+    }
+
+    .stat-card-label {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .stat-card-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    /* 상태 뱃지 클릭 가능 스타일 */
+    .status-badge.clickable {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .status-badge.clickable:hover {
+      transform: scale(1.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    /* 상태 변경 팝업 */
+    .status-popup {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #e1e8ed;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      z-index: 1000;
+      min-width: 300px;
+    }
+
+    .status-popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 999;
+    }
+
+    .status-popup h3 {
+      margin: 0 0 16px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .status-popup-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .status-popup-buttons button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-status-change {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-status-change:hover {
+      background: #2563eb;
+    }
+
+    .btn-cancel {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .btn-cancel:hover {
+      background: #d1d5db;
+    }
+
+    /* 빠른 필터 버튼 */
+    .quick-filter-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn-quick-filter {
+      padding: 6px 12px;
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-quick-filter:hover {
+      background: #e5e7eb;
+      border-color: #9ca3af;
+    }
+
+    .btn-quick-filter.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    /* 위험/지연 표시 */
+    .row-warning {
+      background: #fef3c7 !important;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .row-danger {
+      background: #fee2e2 !important;
+      border-left: 4px solid #ef4444;
+    }
+
+    .warning-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #f59e0b;
+      color: white;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 4px;
+    }
+
+    /* 헤더 고정 */
+    .table-wrapper {
+      position: relative;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    table thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #f7fafc;
+    }
+
+    /* 토스트 알림 */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      z-index: 2000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Skeleton UI */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s ease-in-out infinite;
+      border-radius: 4px;
+    }
+
+    @keyframes loading {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    .skeleton-row {
+      height: 48px;
+      margin: 8px 0;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>📋 접수 현황</h1>
+    <button class="btn-new" onclick="createNew()">➕ 신규 접수 만들기</button>
+  </div>
+
+  <!-- 통계 카드 (5개) -->
+  <div class="stats-cards" id="statsCards">
+    <div class="stat-card clickable-card" onclick="filterByCard('todayReceived')" style="cursor: pointer;">
+      <div class="stat-card-label">오늘 접수 건수</div>
+      <div class="stat-card-value" id="todayReceivedCount">0</div>
+    </div>
+    <div class="stat-card clickable-card" onclick="filterByCard('scheduled')" style="cursor: pointer; border-left: 4px solid #e9d5ff;">
+      <div class="stat-card-label">시공예정 건수</div>
+      <div class="stat-card-value" id="scheduledCount">0</div>
+    </div>
+    <div class="stat-card clickable-card" onclick="filterByCard('completed')" style="cursor: pointer; border-left: 4px solid #d1fae5;">
+      <div class="stat-card-label">시공완료 건수</div>
+      <div class="stat-card-value" id="completedCount">0</div>
+    </div>
+    <div class="stat-card clickable-card" onclick="filterByCard('pendingSettlement')" style="cursor: pointer; border-left: 4px solid #fed7aa;">
+      <div class="stat-card-label">정산대기 건수</div>
+      <div class="stat-card-value" id="pendingSettlementCount">0</div>
+    </div>
+    <div class="stat-card clickable-card" onclick="filterByCard('unclosed')" style="cursor: pointer; border-left: 4px solid #fbbf24;">
+      <div class="stat-card-label">미종결 총 건수</div>
+      <div class="stat-card-value" id="unclosedCount">0</div>
+    </div>
+  </div>
+
+  <div class="date-filter-box">
+    <div class="date-filter-row">
+      <div class="date-filter-item">
+        <label for="startDate">시작일</label>
+        <input type="date" id="startDate" onchange="applyAllFilters()" />
+      </div>
+      <div class="date-filter-item">
+        <label for="endDate">종료일</label>
+        <input type="date" id="endDate" onchange="applyAllFilters()" />
+      </div>
+      <button class="btn-filter-clear" onclick="clearDateFilter()">초기화</button>
+    </div>
+  </div>
+
+  <!-- 필터 영역 -->
+  <div class="filter-row">
+    <div class="filter-item">
+      <label for="statusFilter">상태</label>
+      <select id="statusFilter" onchange="applyAllFilters()">
+        <option value="">전체</option>
+        <option value="미정산">미정산 (정산대기 이전)</option>
+        <option value="접수완료">접수완료</option>
+        <option value="배정완료">배정완료</option>
+        <option value="시공예정">시공예정</option>
+        <option value="시공완료">시공완료</option>
+        <option value="정산대기">정산대기</option>
+        <option value="정산완료">정산완료</option>
+        <option value="종료">종료</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="insuranceFilter">보험사</label>
+      <select id="insuranceFilter" onchange="applyAllFilters()">
+        <option value="">전체</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="workshopFilter">시공점</label>
+      <select id="workshopFilter" onchange="applyAllFilters()">
+        <option value="">전체</option>
+      </select>
+    </div>
+    <div class="filter-item">
+      <label for="managerFilter">담당자</label>
+      <select id="managerFilter" onchange="applyAllFilters()">
+        <option value="">전체</option>
+      </select>
+    </div>
+    <button class="btn-export" onclick="exportToExcel()">📥 엑셀 다운로드</button>
+  </div>
+
+  <!-- 빠른 필터 버튼 -->
+  <div class="quick-filter-buttons">
+    <button class="btn-quick-filter" onclick="applyQuickFilter('미정산')" id="quickFilter-미정산">미정산만 보기</button>
+    <button class="btn-quick-filter" onclick="applyQuickFilter('오늘접수')" id="quickFilter-오늘접수">오늘 접수</button>
+    <button class="btn-quick-filter" onclick="applyQuickFilter('이번주완료')" id="quickFilter-이번주완료">이번 주 완료</button>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="접수번호, 차량번호, 고객명, 연락처로 검색..." oninput="applyAllFilters()" />
+  </div>
+
+  <div class="table-wrapper">
+    <table id="recordsTable">
+      <thead>
+        <tr>
+          <th>접수번호</th>
+          <th class="mobile-hide">접수일시</th>
+          <th class="mobile-hide">차량번호</th>
+          <th class="mobile-hide">차종</th>
+          <th class="mobile-hide">보험사</th>
+          <th class="mobile-hide">시공점</th>
+          <th>현재상태</th>
+          <th style="width: 140px;">작업</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <tr>
+          <td colspan="8" class="empty-state">
+            <p>저장된 접수 기록이 없습니다.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Supabase and API scripts -->
+<script src="/js/supabaseclient.js"></script>
+<script src="/js/statusConfig.js"></script>
+<script src="/js/accidentapi.js" defer></script>
+<script>
+  // Signal that Supabase is ready (after scripts load)
+  document.addEventListener('DOMContentLoaded', () => {
+    window.supabaseReady = true;
+    window.dispatchEvent(new CustomEvent('supabaseReady'));
+  });
+</script>
+
+<script>
+let currentRecords = []; // 현재 페이지 데이터만 보관
+let currentPage = 1;
+let totalCount = 0;
+let totalPages = 1;
+let startDate = null;
+let endDate = null;
+let statusFilter = '';
+let insuranceFilter = '';
+let workshopFilter = '';
+let managerFilter = '';
+let searchTerm = '';
+const pageSize = 30; // 기본 limit 30
+let isLoading = false;
+
+// Normalize text for fuzzy search (remove spaces, dashes, convert to lowercase)
+function normalizeText(text) {
+  if (!text) return '';
+  return String(text).toLowerCase().replace(/[\s\-]/g, '');
+}
+
+// Wait for Supabase to be ready
+function waitForSupabase() {
+  return new Promise((resolve) => {
+    // Check if both client and API functions are ready
+    const clientReady = (window.supabase || window.supabaseClient) && (window.supabaseReady || window.__supabaseReady);
+    const apiReady = window.fetchAccidentRecords || window.loadAllAccidents;
+    
+    if (clientReady && apiReady) {
+      resolve();
+      return;
+    }
+    
+    // Wait for supabaseReady event
+    window.addEventListener('supabaseReady', () => {
+      // Check API functions after client is ready
+      if (window.fetchAccidentRecords || window.loadAllAccidents) {
+        resolve();
+      } else {
+        // Wait a bit more for API functions to load (defer script)
+        let attempts = 0;
+        const checkApi = setInterval(() => {
+          attempts++;
+          if (window.fetchAccidentRecords || window.loadAllAccidents) {
+            clearInterval(checkApi);
+            resolve();
+          } else if (attempts >= 20) { // 2 seconds max
+            clearInterval(checkApi);
+            console.warn('API functions not ready after supabaseReady event');
+            resolve(); // Still resolve to allow error handling
+          }
+        }, 100);
+      }
+    }, { once: true });
+    
+    // Fallback timeout
+    setTimeout(() => {
+      const client = window.supabase || window.supabaseClient;
+      const api = window.fetchAccidentRecords || window.loadAllAccidents;
+      if (client && api) {
+        resolve();
+      } else {
+        console.warn('Supabase client or API functions not ready after timeout');
+        resolve(); // Still resolve to allow error handling
+      }
+    }, 5000);
+  });
+}
+
+// Load records from Supabase with server-side pagination
+async function loadRecords(page = 1, resetFilters = false) {
+  if (isLoading) return;
+  
+  try {
+    isLoading = true;
+    
+    // Wait for Supabase to be ready
+    await waitForSupabase();
+    
+    // Check if API function is available
+    if (!window.fetchAccidentRecordsPaginated) {
+      throw new Error("Supabase API 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+    }
+
+    // 기본 조회 조건: 기간 제한 없음, 전체 상태 (종료 포함)
+    // 데이터 표시 안정화를 위해 과도한 제한 제거
+    const excludeClosed = false; // 종료 상태도 포함
+    const defaultLastDays = null; // 기간 제한 없음
+
+    // 서버 사이드 페이지네이션 및 필터링
+    const result = await window.fetchAccidentRecordsPaginated({
+      page: page,
+      limit: pageSize,
+      status: statusFilter || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      insurer: insuranceFilter || null,
+      workshop: workshopFilter || null,
+      manager: managerFilter || null,
+      search: searchTerm || null,
+      excludeClosed: excludeClosed,
+      defaultLastDays: defaultLastDays
+    });
+
+    if (!result || !result.data) {
+      currentRecords = [];
+      totalCount = 0;
+      totalPages = 1;
+      return;
+    }
+
+    // Convert to internal format
+    currentRecords = result.data.map(r => {
+      const rawDate = r.incident_date || r.accident_time;
+      const dateObj = rawDate ? new Date(rawDate) : null;
+      
+      return {
+        id: r.id || '',
+        displayNo: r.case_no || r.receipt_number || '',
+        accidentTime: dateObj ? dateObj.toLocaleString('ko-KR', { 
+          year: 'numeric', 
+          month: '2-digit', 
+          day: '2-digit', 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }) : '',
+        accidentDate: dateObj,
+        customerName: r.customer_name || '',
+        phone: r.phone || '',
+        carNumber: r.car_no || r.car_number || '',
+        carModel: r.car_model || r.vehicle_model || '',
+        accidentLocation: r.accident_location || '',
+        insurer: r.insurance || r.insurer || '',
+        manager: r.manager || '',
+        caseNo: r.case_no || r.receipt_number || '',
+        assignedWorkshopName: r.assigned_workshop_name || '',
+        assignedWorkshopAddress: r.assigned_workshop_address || '',
+        assignedWorkshopPhone: r.assigned_workshop_phone || '',
+        status: (r.status && window.normalizeStatus) ? window.normalizeStatus(r.status) : '접수완료',
+        vin: r.vin || '',
+        deductible: r.deductible || '',
+        deductibleType: r.deductible_type || r.deductible_pay_type || '',
+        damageType: r.damage_type || '',
+        memo: r.memo || ''
+      };
+    });
+    
+    totalCount = result.count || 0;
+    totalPages = result.totalPages || 1;
+    currentPage = page;
+
+    // 통계 카드 업데이트 (별도 API 호출 필요 - 성능 고려)
+    // updateStatsCards();
+    
+  } catch (error) {
+    console.error('Supabase error:', error);
+    console.error('Error details:', JSON.stringify(error, null, 2));
+    currentRecords = [];
+    totalCount = 0;
+    totalPages = 1;
+    showToast('데이터 로드 중 오류가 발생했습니다: ' + (error.message || "알 수 없는 오류"), 'error');
+    throw error;
+  } finally {
+    isLoading = false;
+  }
+}
+
+// Update filter dropdowns with unique values from database
+async function updateFilterDropdowns() {
+  try {
+    await waitForSupabase();
+    const supabase = window.supabase || window.supabaseClient;
+    
+    if (!supabase) return;
+
+    // 보험사 목록 조회
+    const { data: insurersData } = await supabase
+      .from('accident_records')
+      .select('insurer')
+      .eq('is_deleted', false)
+      .not('insurer', 'is', null);
+    
+    const insurers = [...new Set((insurersData || []).map(r => r.insurer).filter(Boolean))].sort();
+    const insuranceSelect = document.getElementById('insuranceFilter');
+    if (insuranceSelect) {
+      const currentValue = insuranceSelect.value;
+      insuranceSelect.innerHTML = '<option value="">전체</option>';
+      insurers.forEach(insurer => {
+        const option = document.createElement('option');
+        option.value = insurer;
+        option.textContent = insurer;
+        insuranceSelect.appendChild(option);
+      });
+      if (currentValue) insuranceSelect.value = currentValue;
+    }
+    
+    // 시공점 목록 조회
+    const { data: workshopsData } = await supabase
+      .from('accident_records')
+      .select('assigned_workshop_name')
+      .eq('is_deleted', false)
+      .not('assigned_workshop_name', 'is', null);
+    
+    const workshops = [...new Set((workshopsData || []).map(r => r.assigned_workshop_name).filter(Boolean))].sort();
+    const workshopSelect = document.getElementById('workshopFilter');
+    if (workshopSelect) {
+      const currentValue = workshopSelect.value;
+      workshopSelect.innerHTML = '<option value="">전체</option>';
+      workshops.forEach(workshop => {
+        const option = document.createElement('option');
+        option.value = workshop;
+        option.textContent = workshop;
+        workshopSelect.appendChild(option);
+      });
+      if (currentValue) workshopSelect.value = currentValue;
+    }
+    
+    // 담당자 목록 조회
+    const { data: managersData } = await supabase
+      .from('accident_records')
+      .select('manager')
+      .eq('is_deleted', false)
+      .not('manager', 'is', null);
+    
+    const managers = [...new Set((managersData || []).map(r => r.manager).filter(Boolean))].sort();
+    const managerSelect = document.getElementById('managerFilter');
+    if (managerSelect) {
+      const currentValue = managerSelect.value;
+      managerSelect.innerHTML = '<option value="">전체</option>';
+      managers.forEach(manager => {
+        const option = document.createElement('option');
+        option.value = manager;
+        option.textContent = manager;
+        managerSelect.appendChild(option);
+      });
+      if (currentValue) managerSelect.value = currentValue;
+    }
+  } catch (error) {
+    console.warn('필터 드롭다운 업데이트 실패:', error);
+  }
+}
+
+// Legacy function for backward compatibility
+async function loadStatusList() {
+  const tbody = document.querySelector("#tableBody");
+  if (!tbody) {
+    console.error("Table body not found");
+    return;
+  }
+  
+  // Skeleton UI 표시
+  showSkeleton();
+
+  try {
+    // 필터 드롭다운 업데이트
+    await updateFilterDropdowns();
+    
+    // 통계 카드 업데이트
+    await updateStatsCards();
+    
+    // 기본 조회 조건으로 데이터 로드 (최근 7일, 종료 제외)
+    await loadRecords(1, true);
+    renderTable();
+  } catch (error) {
+      tbody.innerHTML = `<tr><td colspan='8' style='text-align:center;padding:20px;color:red;'>데이터 로드 실패: ${error.message || "알 수 없는 오류"}</td></tr>`;
+    showToast("데이터를 불러오는 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"), 'error');
+  }
+}
+
+// HTML escape helper
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Wait for both DOM and Supabase to be ready
+document.addEventListener("DOMContentLoaded", async () => {
+  await waitForSupabase();
+  loadStatusList();
+});
+
+// 테이블 렌더링 (페이지네이션 적용)
+let isRendering = false;
+
+function renderTable() {
+  if (isRendering) {
+    console.warn('[Status] Render already in progress, skipping');
+    return;
+  }
+  
+  isRendering = true;
+  
+  try {
+    const tbody = document.getElementById("tableBody");
+    if (!tbody) {
+      console.warn('[Status] Table body not found');
+      return;
+    }
+    
+    if (currentRecords.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="8" class="empty-state">
+            <p>검색 결과가 없습니다.</p>
+          </td>
+        </tr>
+      `;
+      renderPagination();
+      return;
+    }
+
+    // 현재 페이지 데이터만 렌더링 (서버에서 이미 페이지네이션됨)
+    tbody.innerHTML = currentRecords.map((record, index) => {
+      const displayNo = escapeHtml(record.displayNo || ''); // 화면 표시용 접수번호
+      const recordId = record.id || ''; // UUID - 상세 페이지 조회 기준
+      const caseNo = escapeHtml(record.caseNo || displayNo || ''); // case_no (상세 페이지 이동용)
+      
+      if (!recordId) {
+        console.error("[renderTable] 레코드 ID(UUID)가 없습니다:", record);
+        return '';
+      }
+      
+      const status = record.status || '접수완료';
+      const canDelete = canDeleteRecord(status);
+      
+      // 위험/지연 표시 확인
+      const warningInfo = checkWarningConditions(record, status);
+      const rowClass = warningInfo.class ? `clickable-row ${warningInfo.class}` : 'clickable-row';
+      const warningBadge = warningInfo.message ? `<span class="warning-badge">${warningInfo.message}</span>` : '';
+      
+      return `
+        <tr data-receipt-number="${caseNo}" data-case-no="${caseNo}" data-record-id="${recordId}" data-status="${status}" class="${rowClass}">
+          <td>${displayNo}${warningBadge}</td>
+          <td class="mobile-hide">${escapeHtml(record.accidentTime || '')}</td>
+          <td class="mobile-hide">${escapeHtml(record.carNumber || '')}</td>
+          <td class="mobile-hide">${escapeHtml(record.carModel || '')}</td>
+          <td class="mobile-hide">${escapeHtml(record.insurer || '')}</td>
+          <td class="mobile-hide">${escapeHtml(record.assignedWorkshopName || '')}</td>
+          <td onclick="event.stopPropagation(); openStatusChangePopup('${recordId}', '${caseNo}', '${status}')">${renderStatusBadge(status, true)}</td>
+          <td class="mobile-hide">${escapeHtml(record.manager || '')}</td>
+          <td style="width: 140px; text-align: center;" onclick="event.stopPropagation()">
+            <button class="btn-message" onclick="openMessagePage('${recordId}', '${caseNo}', event)" title="메시지 보내기" style="margin-right: 4px; padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap;">💬 메시지</button>
+            ${canDelete ? `<button class="btn-delete" onclick="deleteRecord(${JSON.stringify(recordId)}, event)" title="삭제">🗑️</button>` : '<span style="color: #9ca3af; font-size: 12px;">삭제불가</span>'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // 페이지네이션 렌더링
+    renderPagination();
+    
+    // 테이블 행 클릭 이벤트 리스너 등록
+    setupRowClickHandlers();
+  } finally {
+    isRendering = false;
+  }
+}
+
+// 테이블 행 클릭 이벤트 핸들러 설정
+function setupRowClickHandlers() {
+  const tbody = document.getElementById("tableBody");
+  if (!tbody) return;
+  
+  // 기존 이벤트 리스너 제거 (중복 방지)
+  const rows = tbody.querySelectorAll('.clickable-row');
+  rows.forEach(row => {
+    // 기존 리스너 제거를 위해 클론 후 재추가
+    const newRow = row.cloneNode(true);
+    row.parentNode.replaceChild(newRow, row);
+  });
+  
+  // 새로운 이벤트 리스너 등록
+  const newRows = tbody.querySelectorAll('.clickable-row');
+  newRows.forEach(row => {
+    row.addEventListener('click', function(event) {
+      // 삭제 버튼 또는 메시지 버튼 클릭 시 이벤트 전파 중단
+      if (event.target.closest('.btn-delete') || event.target.closest('.btn-message')) {
+        return;
+      }
+      
+      // data-case-no 또는 data-receipt-number 속성에서 접수번호 읽기
+      const caseNo = this.dataset.caseNo || this.dataset.receiptNumber;
+      
+      if (!caseNo || caseNo.trim() === '') {
+        console.error("[setupRowClickHandlers] 접수번호가 없습니다. data-case-no:", caseNo);
+        alert("접수번호를 찾을 수 없습니다.");
+        return;
+      }
+      
+      console.log("[setupRowClickHandlers] 행 클릭, case_no:", caseNo);
+      
+      // 상세 페이지로 이동 (receipt_number 파라미터 사용)
+      const url = '/pages/accident/index.html?receipt_number=' + encodeURIComponent(caseNo);
+      console.log("[setupRowClickHandlers] 상세 페이지로 이동:", url);
+      window.location.href = url;
+    });
+  });
+}
+
+// 페이지네이션 렌더링
+function renderPagination() {
+  const paginationEl = document.getElementById("pagination");
+  
+  if (totalPages <= 1) {
+    paginationEl.innerHTML = '';
+    return;
+  }
+
+  let html = '';
+  
+  // 이전 버튼
+  html += `<button onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>이전</button>`;
+  
+  // 페이지 번호 버튼
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+  
+  if (endPage - startPage < maxVisiblePages - 1) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+  
+  if (startPage > 1) {
+    html += `<button onclick="goToPage(1)">1</button>`;
+    if (startPage > 2) html += `<span class="pagination-info">...</span>`;
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button onclick="goToPage(${i})" class="${i === currentPage ? 'active' : ''}">${i}</button>`;
+  }
+  
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) html += `<span class="pagination-info">...</span>`;
+    html += `<button onclick="goToPage(${totalPages})">${totalPages}</button>`;
+  }
+  
+  // 다음 버튼
+  html += `<button onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>다음</button>`;
+  
+  // 정보 표시
+  const startIndex = (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, totalCount);
+  html += `<span class="pagination-info">${startIndex}-${endIndex} / ${totalCount}</span>`;
+  
+  paginationEl.innerHTML = html;
+}
+
+// 페이지 이동
+async function goToPage(page) {
+  if (page < 1 || page > totalPages) return;
+  if (page === currentPage) return; // 이미 해당 페이지면 스킵
+  
+  showSkeleton();
+  await loadRecords(page);
+  renderTable();
+  // 스크롤 to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 상태 관련 함수는 statusConfig.js에서 제공
+// getStatusClass, getStatusLabel, renderStatusBadge, normalizeStatus 등
+
+// 날짜 범위 필터 함수
+function filterByDateRange(records, startDate, endDate) {
+  if (!startDate || !endDate) return records;
+  
+  const s = new Date(startDate);
+  const e = new Date(endDate);
+  e.setHours(23, 59, 59, 999);
+  
+  return records.filter(r => {
+    if (!r.accidentDate) return false;
+    const d = new Date(r.accidentDate);
+    return d >= s && d <= e;
+  });
+}
+
+// 상태 필터 함수
+function filterByStatus(records, status) {
+  if (!status) return records;
+  
+  // 미정산 필터 (정산대기 이전 상태 전체)
+  if (status === '미정산') {
+    const beforeSettlementStatuses = ['접수완료', '배정완료', '시공예정', '시공완료'];
+    return records.filter(r => {
+      const recordStatus = r.status || '접수완료';
+      return beforeSettlementStatuses.includes(recordStatus);
+    });
+  }
+  
+  // 새로운 상태 값과 기존 상태 값 모두 지원
+  return records.filter(r => {
+    const recordStatus = r.status || '접수완료';
+    return recordStatus === status;
+  });
+}
+
+// 보험사 필터 함수
+function filterByInsurance(records, insurer) {
+  if (!insurer) return records;
+  return records.filter(r => r.insurer === insurer);
+}
+
+// 시공점 필터 함수
+function filterByWorkshop(records, workshop) {
+  if (!workshop) return records;
+  return records.filter(r => r.assignedWorkshopName === workshop);
+}
+
+// 담당자 필터 함수
+function filterByManager(records, manager) {
+  if (!manager) return records;
+  return records.filter(r => r.manager === manager);
+}
+
+// 키워드 필터링 함수 (접수번호, 차량번호, 고객명, 연락처 통합 검색)
+function filterByKeyword(records, keyword) {
+  if (!keyword) return records;
+  const k = keyword.toLowerCase().trim();
+  return records.filter(r => {
+    const receiptNo = (r.displayNo || r.caseNo || r.receiptNumber || '').toLowerCase();
+    const carNumber = (r.carNumber || '').toLowerCase();
+    const customerName = (r.customerName || '').toLowerCase();
+    const phone = (r.phone || '').toLowerCase();
+    
+    return receiptNo.includes(k) ||
+           carNumber.includes(k) ||
+           customerName.includes(k) ||
+           phone.includes(k);
+  });
+}
+
+// 테이블 필터링 (서버 사이드)
+let isFiltering = false;
+
+// 모든 필터 적용 (서버 사이드 API 호출)
+async function applyAllFilters() {
+  if (isFiltering || isLoading) return;
+  isFiltering = true;
+  
+  try {
+    // Update filter values from UI
+    const startDateInput = document.getElementById("startDate");
+    const endDateInput = document.getElementById("endDate");
+    const statusSelect = document.getElementById("statusFilter");
+    const insuranceSelect = document.getElementById("insuranceFilter");
+    const workshopSelect = document.getElementById("workshopFilter");
+    const managerSelect = document.getElementById("managerFilter");
+    const searchInput = document.getElementById("searchInput");
+    
+    startDate = startDateInput?.value || null;
+    endDate = endDateInput?.value || null;
+    statusFilter = statusSelect?.value || '';
+    insuranceFilter = insuranceSelect?.value || '';
+    workshopFilter = workshopSelect?.value || '';
+    managerFilter = managerSelect?.value || '';
+    searchTerm = searchInput?.value || '';
+    
+    // 필터 변경 시 첫 페이지로 이동
+    currentPage = 1;
+    
+    // 빠른 필터 버튼 활성화 상태 업데이트
+    updateQuickFilterButtons();
+    
+    // 서버 사이드 API 호출
+    showSkeleton();
+    await loadRecords(1, false);
+    
+    // 렌더링
+    renderTable();
+  } catch (error) {
+    console.error('필터 적용 중 오류:', error);
+    showToast('필터 적용 중 오류가 발생했습니다.', 'error');
+  } finally {
+    isFiltering = false;
+  }
+}
+
+// 날짜 필터 초기화
+async function clearDateFilter() {
+  const startDateInput = document.getElementById("startDate");
+  const endDateInput = document.getElementById("endDate");
+  
+  if (startDateInput) startDateInput.value = '';
+  if (endDateInput) endDateInput.value = '';
+  startDate = null;
+  endDate = null;
+  
+  await applyAllFilters();
+}
+
+// HTML 이스케이프
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// 엑셀 다운로드 함수 (서버 사이드 전체 데이터 조회)
+async function exportToExcel() {
+  // XLSX 라이브러리 로드 확인
+  if (typeof XLSX === 'undefined') {
+    alert('엑셀 라이브러리를 로드할 수 없습니다. 페이지를 새로고침해주세요.');
+    return;
+  }
+  
+  try {
+    // 로딩 표시
+    const exportBtn = document.querySelector('.btn-export');
+    let originalText = '';
+    if (exportBtn) {
+      originalText = exportBtn.textContent || '';
+      exportBtn.disabled = true;
+      exportBtn.textContent = '⏳ 엑셀 생성 중...';
+    }
+    
+    showToast('엑셀 파일을 생성하는 중입니다...');
+    
+    // Wait for Supabase to be ready
+    await waitForSupabase();
+    
+    // Check if API function is available
+    if (!window.fetchAccidentRecordsForExport) {
+      throw new Error("엑셀 다운로드 API 함수를 찾을 수 없습니다.");
+    }
+
+    // 서버에서 전체 필터 조건을 기준으로 전체 데이터 조회
+    const allData = await window.fetchAccidentRecordsForExport({
+      status: statusFilter || null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      insurer: insuranceFilter || null,
+      workshop: workshopFilter || null,
+      manager: managerFilter || null,
+      search: searchTerm || null
+    });
+
+    if (!allData || allData.length === 0) {
+      alert('다운로드할 데이터가 없습니다.');
+      return;
+    }
+    
+    // 데이터 준비 - 전체 필드 포함
+    const data = allData.map(r => {
+      const rawDate = r.incident_date || r.accident_time;
+      const dateObj = rawDate ? new Date(rawDate) : null;
+      const accidentTime = dateObj ? dateObj.toLocaleString('ko-KR', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }) : '';
+      
+      return {
+        '접수번호': r.case_no || r.receipt_number || '',
+        '접수일시': accidentTime,
+        '고객명': r.customer_name || '',
+        '연락처': r.phone || '',
+        '차량번호': r.car_no || r.car_number || '',
+        'VIN': r.vin || '',
+        '차종': r.car_model || r.vehicle_model || '',
+        '보험사': r.insurance || r.insurer || '',
+        '면책금': r.deductible || '',
+        '면책금납부방식': r.deductible_type || r.deductible_pay_type || '',
+        '파손유형': r.damage_type || '',
+        '사고위치': r.accident_location || '',
+        '담당자': r.manager || '',
+        '배정 시공점명': r.assigned_workshop_name || '',
+        '배정 시공점 주소': r.assigned_workshop_address || '',
+        '배정 시공점 전화번호': r.assigned_workshop_phone || '',
+        '현재상태': r.status || '',
+        '비고': r.memo || ''
+      };
+    });
+    
+    // 워크북 생성
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '접수현황');
+    
+    // 파일명 생성 (현재 날짜 포함)
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '');
+    const filename = `접수현황_${dateStr}.xlsx`;
+    
+    // 다운로드
+    XLSX.writeFile(wb, filename);
+    
+    showToast('엑셀 파일이 다운로드되었습니다.');
+  } catch (error) {
+    console.error('엑셀 다운로드 오류:', error);
+    showToast('엑셀 다운로드 중 오류가 발생했습니다: ' + (error.message || "알 수 없는 오류"), 'error');
+  } finally {
+    // 버튼 복원
+    const exportBtn = document.querySelector('.btn-export');
+    if (exportBtn) {
+      exportBtn.disabled = false;
+      exportBtn.textContent = originalText || '📥 엑셀 다운로드';
+    }
+  }
+}
+
+// 상세 페이지 열기 (receipt_number 기준)
+function openDetail(receiptNumber) {
+  console.log("[openDetail] 함수 호출됨, receiptNumber:", receiptNumber);
+  
+  // receiptNumber는 접수번호 (display_no, case_no, receipt_number 등)
+  if (!receiptNumber || receiptNumber === 'undefined' || receiptNumber === 'null' || receiptNumber === '') {
+    console.error("[openDetail] 접수번호가 없습니다. receiptNumber:", receiptNumber);
+    alert("접수번호를 찾을 수 없습니다.");
+    return;
+  }
+  
+  // 직접 페이지 이동 (receipt_number를 쿼리스트링으로 전달)
+  const url = '/pages/accident/index.html?receipt_number=' + encodeURIComponent(receiptNumber);
+  console.log("[openDetail] 상세 페이지로 이동:", url);
+  window.location.href = url;
+}
+
+// 신규 접수 만들기
+function createNew() {
+  // 부모 프레임으로 메시지 전송
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'openAccidentNew' }, '*');
+  } else {
+    window.location.href = '/pages/accident/index.html';
+  }
+}
+
+// 기본 정렬 순서 함수 (상태 기준 우선 정렬)
+function sortByDefaultOrder(records) {
+  const statusOrder = {
+    '정산대기': 1,
+    '시공완료': 2,
+    '시공예정': 3,
+    '배정완료': 4,
+    '접수완료': 5,
+    '종료': 6,
+    '정산완료': 7
+  };
+  
+  return [...records].sort((a, b) => {
+    const statusA = a.status || '접수완료';
+    const statusB = b.status || '접수완료';
+    const orderA = statusOrder[statusA] || 99;
+    const orderB = statusOrder[statusB] || 99;
+    
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+    
+    // 같은 우선순위면 최신순
+    const dateA = a.accidentDate ? new Date(a.accidentDate).getTime() : 0;
+    const dateB = b.accidentDate ? new Date(b.accidentDate).getTime() : 0;
+    return dateB - dateA;
+  });
+}
+
+// 실제 DB status 값 조회 (디버깅용)
+async function checkDatabaseStatusValues() {
+  try {
+    await waitForSupabase();
+    const supabase = window.supabase || window.supabaseClient;
+    
+    if (!supabase) return;
+
+    // DISTINCT status 값 조회
+    const { data: statusData, error } = await supabase
+      .from('accident_records')
+      .select('status')
+      .eq('is_deleted', false);
+
+    if (error) {
+      console.error('Status 조회 오류:', error);
+      return;
+    }
+
+    // 고유 status 값 추출
+    const uniqueStatuses = [...new Set(statusData.map(r => r.status).filter(s => s))];
+    console.log('=== 실제 DB Status 값 목록 ===');
+    console.log('총 레코드 수:', statusData.length);
+    console.log('고유 Status 값:', uniqueStatuses);
+    console.log('Status별 개수:');
+    const statusCounts = {};
+    statusData.forEach(r => {
+      const s = r.status || '(NULL)';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+    console.table(statusCounts);
+
+    // ENUM 정의와 비교
+    const enumStatuses = ['접수완료', '배정완료', '시공예정', '시공완료', '정산대기', '정산완료', '종료'];
+    const unknownStatuses = uniqueStatuses.filter(s => !enumStatuses.includes(s));
+    if (unknownStatuses.length > 0) {
+      console.warn('⚠️ ENUM 정의와 일치하지 않는 Status 값:', unknownStatuses);
+    } else {
+      console.log('✅ 모든 Status 값이 ENUM 정의와 일치합니다.');
+    }
+
+    return { uniqueStatuses, statusCounts, unknownStatuses };
+  } catch (error) {
+    console.error('Status 값 조회 실패:', error);
+  }
+}
+
+// 통계 카드 업데이트 (서버 사이드 집계)
+async function updateStatsCards() {
+  try {
+    await waitForSupabase();
+    const supabase = window.supabase || window.supabaseClient;
+    
+    if (!supabase) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // 오늘 접수된 건
+    const { count: todayReceived } = await supabase
+      .from('accident_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .gte('incident_date', today.toISOString())
+      .lt('incident_date', tomorrow.toISOString());
+
+    // 시공예정 건수
+    const { count: scheduled } = await supabase
+      .from('accident_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .eq('status', '시공예정');
+
+    // 시공완료 건수
+    const { count: completed } = await supabase
+      .from('accident_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .eq('status', '시공완료');
+
+    // 정산대기 건
+    const { count: pendingSettlement } = await supabase
+      .from('accident_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .eq('status', '정산대기');
+
+    // 미종결 총 건수 (종료, 정산완료 제외)
+    const { count: unclosed } = await supabase
+      .from('accident_records')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_deleted', false)
+      .in('status', ['접수완료', '배정완료', '시공예정', '시공완료', '정산대기']);
+
+    document.getElementById('todayReceivedCount').textContent = todayReceived || 0;
+    document.getElementById('scheduledCount').textContent = scheduled || 0;
+    document.getElementById('completedCount').textContent = completed || 0;
+    document.getElementById('pendingSettlementCount').textContent = pendingSettlement || 0;
+    document.getElementById('unclosedCount').textContent = unclosed || 0;
+  } catch (error) {
+    console.warn('통계 카드 업데이트 실패:', error);
+  }
+}
+
+// 카드 클릭 시 필터링
+async function filterByCard(cardType) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // 기존 필터 초기화
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  
+  switch(cardType) {
+    case 'todayReceived':
+      document.getElementById('startDate').value = today.toISOString().split('T')[0];
+      document.getElementById('endDate').value = today.toISOString().split('T')[0];
+      break;
+    case 'scheduled':
+      document.getElementById('statusFilter').value = '시공예정';
+      break;
+    case 'completed':
+      document.getElementById('statusFilter').value = '시공완료';
+      break;
+    case 'pendingSettlement':
+      document.getElementById('statusFilter').value = '정산대기';
+      break;
+    case 'unclosed':
+      // 미종결은 상태 필터로는 표현 불가, 검색으로 처리
+      break;
+  }
+  
+  await applyAllFilters();
+  showToast('필터가 적용되었습니다.');
+}
+
+// 빠른 필터 적용
+async function applyQuickFilter(filterType) {
+  // 현재 활성화된 버튼 확인
+  const currentActive = document.querySelector('.btn-quick-filter.active');
+  const isAlreadyActive = currentActive && currentActive.id === `quickFilter-${filterType}`;
+  
+  // 모든 빠른 필터 버튼 비활성화
+  document.querySelectorAll('.btn-quick-filter').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // 같은 버튼을 다시 클릭하면 필터 해제, 아니면 활성화
+  if (isAlreadyActive) {
+    // 필터 해제
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    await applyAllFilters();
+    showToast('필터가 해제되었습니다.');
+    return;
+  }
+  
+  // 선택한 버튼 활성화
+  const btn = document.getElementById(`quickFilter-${filterType}`);
+  if (btn) {
+    btn.classList.add('active');
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // 기존 필터 초기화
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  
+  switch(filterType) {
+    case '미정산':
+      document.getElementById('statusFilter').value = '미정산';
+      break;
+    case '오늘접수':
+      document.getElementById('startDate').value = today.toISOString().split('T')[0];
+      document.getElementById('endDate').value = today.toISOString().split('T')[0];
+      break;
+    case '이번주완료':
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay()); // 이번 주 월요일
+      document.getElementById('startDate').value = weekStart.toISOString().split('T')[0];
+      document.getElementById('endDate').value = today.toISOString().split('T')[0];
+      document.getElementById('statusFilter').value = '시공완료';
+      break;
+  }
+  
+  await applyAllFilters();
+  showToast('빠른 필터가 적용되었습니다.');
+}
+
+// 빠른 필터 버튼 활성화 상태 업데이트
+function updateQuickFilterButtons() {
+  // 모든 빠른 필터 버튼 비활성화
+  document.querySelectorAll('.btn-quick-filter').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  
+  // 현재 필터 상태에 따라 버튼 활성화
+  const statusFilter = document.getElementById('statusFilter')?.value || '';
+  const startDate = document.getElementById('startDate')?.value || '';
+  const endDate = document.getElementById('endDate')?.value || '';
+  
+  const today = new Date().toISOString().split('T')[0];
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekStartStr = weekStart.toISOString().split('T')[0];
+  
+  if (statusFilter === '미정산') {
+    document.getElementById('quickFilter-미정산')?.classList.add('active');
+  } else if (startDate === today && endDate === today) {
+    document.getElementById('quickFilter-오늘접수')?.classList.add('active');
+  } else if (startDate === weekStartStr && endDate === today && statusFilter === '시공완료') {
+    document.getElementById('quickFilter-이번주완료')?.classList.add('active');
+  }
+}
+
+// 삭제 가능 여부 확인
+function canDeleteRecord(status) {
+  const cannotDeleteStatuses = ['정산대기', '정산완료', '종료'];
+  return !cannotDeleteStatuses.includes(status);
+}
+
+// 상태 변경 팝업 열기
+function openStatusChangePopup(recordId, caseNo, currentStatus) {
+  const STATUS_ORDER = ['접수완료', '배정완료', '시공예정', '시공완료', '정산대기', '정산완료', '종료'];
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  const nextStatus = STATUS_ORDER[currentIndex + 1];
+  
+  if (!nextStatus) {
+    alert('더 이상 변경할 수 있는 상태가 없습니다.');
+    return;
+  }
+  
+  // 팝업 오버레이 생성
+  const overlay = document.createElement('div');
+  overlay.className = 'status-popup-overlay';
+  overlay.onclick = () => closeStatusChangePopup(overlay);
+  
+  // 팝업 생성
+  const popup = document.createElement('div');
+  popup.className = 'status-popup';
+  popup.innerHTML = `
+    <h3>상태 변경</h3>
+    <p style="margin-bottom: 12px; color: #6b7280;">현재 상태: <strong>${currentStatus}</strong></p>
+    <p style="margin-bottom: 16px; color: #6b7280;">변경할 상태: <strong>${nextStatus}</strong></p>
+    <div class="status-popup-buttons">
+      <button class="btn-status-change" onclick="confirmStatusChange('${recordId}', '${caseNo}', '${currentStatus}', '${nextStatus}', this.closest('.status-popup-overlay'))">변경</button>
+      <button class="btn-cancel" onclick="closeStatusChangePopup(this.closest('.status-popup-overlay'))">취소</button>
+    </div>
+  `;
+  
+  overlay.appendChild(popup);
+  document.body.appendChild(overlay);
+}
+
+// 상태 변경 팝업 닫기
+function closeStatusChangePopup(overlay) {
+  if (overlay) {
+    overlay.remove();
+  }
+}
+
+// 위험/지연 조건 확인
+function checkWarningConditions(record, status) {
+  const now = new Date();
+  const result = { class: '', message: '' };
+  
+  if (!record.accidentDate) return result;
+  
+  const accidentDate = new Date(record.accidentDate);
+  const hoursSinceAccident = (now - accidentDate) / (1000 * 60 * 60);
+  
+  // 접수 후 24시간 이상 상태 변경 없음
+  if (status === '접수완료' && hoursSinceAccident >= 24) {
+    result.class = 'row-warning';
+    result.message = '24h+';
+    return result;
+  }
+  
+  // 시공점 미배정 상태 12시간 초과
+  if ((status === '접수완료' || status === '배정완료') && !record.assignedWorkshopName && hoursSinceAccident >= 12) {
+    result.class = 'row-danger';
+    result.message = '미배정';
+    return result;
+  }
+  
+  // 시공완료 후 3일 이상 정산대기
+  if (status === '정산대기') {
+    // 시공완료 상태 변경 이력을 확인해야 하지만, 간단히 접수일 기준으로 계산
+    const daysSinceAccident = hoursSinceAccident / 24;
+    if (daysSinceAccident >= 3) {
+      result.class = 'row-warning';
+      result.message = '3일+';
+      return result;
+    }
+  }
+  
+  return result;
+}
+
+// 토스트 알림 표시
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type === 'error' ? 'error' : ''}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease-out reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// Skeleton UI 표시
+function showSkeleton() {
+  const tbody = document.getElementById("tableBody");
+  if (!tbody) return;
+  
+  tbody.innerHTML = Array(10).fill(0).map(() => `
+    <tr>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+      <td><div class="skeleton skeleton-row"></div></td>
+    </tr>
+  `).join('');
+}
+
+// 상태 변경 확인
+async function confirmStatusChange(recordId, caseNo, oldStatus, newStatus, overlay) {
+  if (!window.supabaseClient) {
+    alert('시스템 초기화 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  try {
+    await waitForSupabase();
+    
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+    if (userError || !user) {
+      alert('로그인한 사용자가 없습니다.');
+      return;
+    }
+    
+    // status_priority 계산 (statusConfig.js의 ACCIDENT_STATUS_PRIORITY 사용)
+    const statusPriority = (window.ACCIDENT_STATUS_PRIORITY && window.ACCIDENT_STATUS_PRIORITY[newStatus]) || 5;
+    
+    // accident_records.status UPDATE (status_priority도 함께 업데이트)
+    const { error: updateError } = await window.supabaseClient
+      .from('accident_records')
+      .update({ 
+        status: newStatus,
+        status_priority: statusPriority
+      })
+      .eq('id', recordId);
+    
+    if (updateError) {
+      console.error("상태 업데이트 오류:", updateError);
+      alert("상태 변경 실패: " + updateError.message);
+      return;
+    }
+    
+    // accident_status_logs 테이블에 변경 로그 INSERT
+    const { error: logError } = await window.supabaseClient
+      .from('accident_status_logs')
+      .insert({
+        case_no: caseNo,
+        before_status: oldStatus,
+        after_status: newStatus,
+        changed_by: user.id
+      });
+    
+    if (logError) {
+      console.warn("상태 변경 이력 로그 저장 실패:", logError);
+    }
+    
+    // 팝업 닫기
+    closeStatusChangePopup(overlay);
+    
+    // 데이터 다시 로드
+    await loadRecords();
+    applyAllFilters();
+    
+    showToast(`상태가 "${newStatus}"로 변경되었습니다.`);
+  } catch (error) {
+    console.error("상태 변경 중 오류:", error);
+    alert("상태 변경 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+  }
+}
+
+// 메시지 보내기 페이지로 이동
+// 접수 현황 리스트의 "메시지 보내기" 버튼 클릭 시
+// 메시지 생성은 별도의 페이지로 분리
+function openMessagePage(recordId, caseNo, event) {
+  if (event) {
+    event.stopPropagation(); // 행 클릭 이벤트 방지
+  }
+  
+  if (!recordId) {
+    alert('사고 ID를 찾을 수 없습니다.');
+    return;
+  }
+  
+  // 메시지 생성 페이지로 이동
+  // /pages/message/?accidentId=xxx
+  const url = `/pages/message/index.html?accidentId=${encodeURIComponent(recordId)}`;
+  
+  // iframe 내부인 경우 부모 창에서 이동
+  if (window.parent && window.parent !== window) {
+    window.parent.location.href = url;
+  } else {
+    // 직접 페이지 이동
+    window.location.href = url;
+  }
+}
+
+// 레코드 삭제 함수
+async function deleteRecord(recordId, event) {
+  if (event) {
+    event.stopPropagation(); // 행 클릭 이벤트 방지
+  }
+  
+  if (!recordId) {
+    alert("삭제할 레코드 ID를 찾을 수 없습니다.");
+    return;
+  }
+  
+  // 삭제 가능 여부 확인
+  const record = allRecords.find(r => r.id === recordId);
+  if (!record) {
+    alert("레코드를 찾을 수 없습니다.");
+    return;
+  }
+  
+  if (!canDeleteRecord(record.status)) {
+    alert(`"${record.status}" 상태인 사고는 삭제할 수 없습니다.\n정산대기 이상 상태의 사고는 삭제가 제한됩니다.`);
+    return;
+  }
+  
+  if (!window.confirm("정말 삭제하시겠습니까? (삭제 후 복구 가능)")) {
+    return;
+  }
+  
+  try {
+    await waitForSupabase();
+    
+    if (!window.deleteAccidentRecord) {
+      throw new Error("삭제 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    await window.deleteAccidentRecord(recordId);
+    
+    showToast("삭제되었습니다.");
+    
+    // 현재 페이지 데이터 다시 로드
+    await loadRecords(currentPage);
+    renderTable();
+    
+    // 통계 카드 업데이트
+    await updateStatsCards();
+    
+  } catch (error) {
+    console.error("삭제 오류:", error);
+    showToast("삭제 중 오류 발생: " + (error.message || "알 수 없는 오류"), 'error');
+  }
+}
+
+// 초기화 (한 번만 실행)
+let isInitialized = false;
+
+(async function() {
+  if (isInitialized) {
+    console.warn('[Status] Already initialized, skipping');
+    return;
+  }
+  isInitialized = true;
+  
+  // 필터 드롭다운 업데이트
+  await updateFilterDropdowns();
+  
+  // 통계 카드 업데이트
+  await updateStatsCards();
+  
+  // 디버깅: 실제 DB status 값 확인
+  await checkDatabaseStatusValues();
+  
+  // 기본 조회 조건으로 데이터 로드 (임시: 조건 없음)
+  await loadRecords(1, true);
+  renderTable();
+  
+  // 디버깅: 로드된 데이터 확인
+  console.log('=== 로드된 데이터 확인 ===');
+  console.log('currentRecords 개수:', currentRecords.length);
+  console.log('totalCount:', totalCount);
+  console.log('currentPage:', currentPage);
+  console.log('totalPages:', totalPages);
+  if (currentRecords.length > 0) {
+    console.log('첫 번째 레코드 샘플:', currentRecords[0]);
+  }
+  
+  // Supabase 실시간 구독 설정 (렌더링 후)
+  if (!window.supabaseClient) {
+    return;
+  }
+  
+  const client = window.supabaseClient;
+  if (client) {
+    let isReloading = false;
+    client
+      .channel('accidents-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'accident_records' },
+        async (payload) => {
+          if (isReloading) {
+            console.log('[Status] Reload already in progress, skipping');
+            return;
+          }
+          isReloading = true;
+          try {
+            // 현재 페이지 다시 로드
+            await loadRecords(currentPage);
+            renderTable();
+            // 통계 카드 업데이트
+            await updateStatsCards();
+          } finally {
+            isReloading = false;
+          }
+        }
+      )
+      .subscribe();
+  }
+})();
+
+</script>
+
+</body>
+</html>

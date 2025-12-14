@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>시공점 자동 배정 지도</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Supabase 초기화 -->
+  <script src="/js/supabaseclient.js"></script>
+
+  <!-- XLSX for Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Kakao Map SDK -->
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=ebeba9e3c5cb4bd9cecfcc0958ac20d4&libraries=services&autoload=false"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .layout {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    .sidebar {
+      width: 380px;
+      max-width: 100%;
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      padding: 20px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      margin-bottom: 4px;
+    }
+
+    .sidebar-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .sidebar-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .card {
+      background: #f9fafb;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 14px 14px 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #111827;
+    }
+
+    .field-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .input-box {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 13px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+
+    .input-box:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px rgba(59,130,246,0.2);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 6px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-secondary {
+      background: #06b6d4;
+      color: #ffffff;
+    }
+
+    .btn-secondary:hover {
+      background: #0891b2;
+    }
+
+    .meta-text {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .meta-text strong {
+      color: #111827;
+    }
+
+    .result-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .result-item {
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      background: #ffffff;
+      padding: 8px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.05s;
+    }
+
+    .result-item:hover {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      transform: translateY(-1px);
+    }
+
+    .result-item.active {
+      background: #dbeafe;
+      border-color: #2563eb;
+    }
+
+    .result-title-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .badge-rank {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #3b82f6;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+
+    .result-name {
+      font-weight: 600;
+      color: #111827;
+      font-size: 12px;
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .result-distance {
+      font-size: 11px;
+      color: #4b5563;
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+
+    .result-address {
+      font-size: 11px;
+      color: #6b7280;
+      margin-top: 1px;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    .result-phone {
+      font-size: 11px;
+      color: #2563eb;
+      margin-top: 1px;
+    }
+    
+    .btn-select-workshop {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px 12px;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    .btn-select-workshop:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .detail-box {
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .detail-row {
+      margin-top: 3px;
+    }
+
+    .detail-label {
+      display: inline-block;
+      min-width: 52px;
+      color: #6b7280;
+    }
+
+    .detail-value {
+      color: #111827;
+    }
+
+    .detail-empty {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+
+    #map {
+      flex: 1;
+      height: 100vh;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        height: auto;
+        max-height: 55%;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      #map {
+        height: 45%;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">시공점 자동 배정 지도</div>
+      <div class="sidebar-subtitle">
+        고객 주소 기준으로 가장 가까운 시공점 5곳을 자동 추천합니다.
+      </div>
+    </div>
+
+    <!-- Excel 업로드 카드 -->
+    <div class="card">
+      <div class="card-title">1. 시공점 엑셀 업로드</div>
+      <div class="field-label">엑셀 파일 선택 (컬럼: 순번, 상호, 주소, 전화번호)</div>
+      <input type="file" id="excelFile" class="input-box" accept=".xlsx,.xls" />
+      <button class="btn btn-primary" onclick="uploadExcel()">엑셀 업로드 / 업데이트</button>
+      <button class="btn btn-danger" onclick="clearStorage()">저장된 시공점 삭제</button>
+      <div class="meta-text">
+        저장된 시공점: <strong id="storeCount">0</strong> 개
+        <div id="uploadStatus"></div>
+      </div>
+    </div>
+
+    <!-- 주소 검색 카드 -->
+    <div class="card">
+      <div class="card-title">2. 고객 주소 검색</div>
+      <div class="field-label">고객 주소</div>
+      <input id="addressInput" class="input-box" placeholder="예: 서울특별시 강남구 테헤란로 123" />
+      <button class="btn btn-secondary" onclick="findNearest()">가장 가까운 5곳 찾기</button>
+      <div class="meta-text" id="searchStatus"></div>
+    </div>
+
+    <!-- 추천 시공점 리스트 -->
+    <div class="card">
+      <div class="card-title">3. 추천 시공점 5곳</div>
+      <div class="meta-text">순번 / 상호 / 거리 / 주소 / 전화번호</div>
+      <div id="resultList" class="result-list"></div>
+    </div>
+
+    <!-- 선택된 시공점 상세 -->
+    <div class="card">
+      <div class="card-title">4. 선택된 시공점 상세</div>
+      <div id="selectedDetail" class="detail-box">
+        <div class="detail-empty">마커 또는 목록을 클릭하면 상세 정보가 표시됩니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script>
+  // Kakao map globals
+  let map;
+  let geocoder;
+  let stores = [];          // { seq, name, address, phone, lat, lng }
+  let markers = [];         // 추천 시공점 마커
+  let infoWindows = [];     // 추천 시공점 인포윈도우
+  let userMarker = null;    // 고객 위치 마커
+  let selectedIndex = null; // 0~4
+  let nearest = [];         // 추천된 시공점 5곳
+
+  // Wait for Supabase to be ready
+  function waitForSupabase() {
+    return new Promise((resolve) => {
+      if (window.supabaseClient && window.supabaseReady) {
+        resolve();
+        return;
+      }
+      
+      window.addEventListener('supabaseReady', () => {
+        resolve();
+      }, { once: true });
+      
+      setTimeout(() => {
+        if (window.supabaseClient) {
+          resolve();
+        } else {
+          console.warn('Supabase client not ready after timeout');
+          resolve();
+        }
+      }, 2000);
+    });
+  }
+
+  // Error handling helper
+  function checkError(error) {
+    if (error) {
+      console.error("Supabase error:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      alert("데이터 저장 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+      throw error;
+    }
+  }
+
+  // Util: HTML 이스케이프
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  // Util: 거리(km)
+  function getDistanceKm(lat1, lon1, lat2, lon2) {
+    function toRad(v) { return v * Math.PI / 180; }
+    const R = 6371;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  // Util: 예상 이동 시간(분) – 평균 40km/h 가정
+  function estimateMinutes(distanceKm) {
+    if (!distanceKm || distanceKm <= 0) return null;
+    const minutes = distanceKm / 40 * 60;
+    return Math.max(1, Math.round(minutes));
+  }
+
+  // Supabase에서 시공점 데이터 로드
+  async function loadStoresFromStorage() {
+    await waitForSupabase();
+    
+    if (!window.supabaseClient) {
+      console.error("Supabase client not available");
+      stores = [];
+      document.getElementById("storeCount").innerText = "0";
+      return;
+    }
+
+    try {
+      const { data, error } = await window.supabaseClient
+        .from("installer_locations")
+        .select("*")
+        .order("seq", { ascending: true });
+
+      checkError(error);
+
+      stores = (data || []).map(s => ({
+        seq: s.seq || "",
+        name: s.name || "",
+        address: s.address || "",
+        phone: s.phone || "",
+        lat: s.lat != null ? parseFloat(s.lat) : null,
+        lng: s.lng != null ? parseFloat(s.lng) : null,
+      }));
+      document.getElementById("storeCount").innerText = String(stores.length);
+    } catch (e) {
+      console.error("Failed to load stores:", e);
+      stores = [];
+      document.getElementById("storeCount").innerText = "0";
+    }
+  }
+
+  // Supabase에 시공점 데이터 저장
+  async function saveStoresToStorage() {
+    await waitForSupabase();
+    
+    if (!window.supabaseClient) {
+      console.error("Supabase client not available");
+      alert("데이터베이스 연결에 실패했습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
+    try {
+      // 기존 데이터 삭제 후 새로 삽입
+      const { error: deleteError } = await window.supabaseClient
+        .from("installer_locations")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (deleteError) {
+        console.warn("Delete error (may be empty table):", deleteError);
+      }
+
+      if (stores.length > 0) {
+        const records = stores.map(s => ({
+          seq: s.seq,
+          name: s.name,
+          address: s.address,
+          phone: s.phone,
+          lat: s.lat,
+          lng: s.lng
+        }));
+
+        const { error } = await window.supabaseClient
+          .from("installer_locations")
+          .insert(records);
+
+        checkError(error);
+      }
+
+      document.getElementById("storeCount").innerText = String(stores.length);
+    } catch (e) {
+      console.error("Failed to save stores:", e);
+      console.error("Error details:", JSON.stringify(e, null, 2));
+      alert("데이터 저장 중 오류가 발생했습니다: " + (e.message || "알 수 없는 오류"));
+    }
+  }
+
+  // 클릭 마커/인포윈도우 초기화
+  function clearMarkers() {
+    markers.forEach(m => m.setMap(null));
+    markers = [];
+    infoWindows.forEach(iw => iw.close());
+    infoWindows = [];
+  }
+
+  function clearUserMarker() {
+    if (userMarker) {
+      userMarker.setMap(null);
+      userMarker = null;
+    }
+  }
+
+  // Excel 업로드
+  function uploadExcel() {
+    const fileInput = document.getElementById("excelFile");
+    const statusEl = document.getElementById("uploadStatus");
+    if (!fileInput.files[0]) {
+      alert("엑셀 파일을 선택해주세요.");
+      return;
+    }
+
+    statusEl.textContent = "엑셀 처리 중… (주소 → 좌표 변환)";
+    statusEl.style.color = "#4b5563";
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      // 기대 컬럼: 순번, 상호, 주소, 전화번호
+      const rows = json.filter(r => r.주소 || r["주소"]);
+      if (!rows.length) {
+        statusEl.textContent = "❌ '주소' 컬럼이 포함된 행이 없습니다.";
+        statusEl.style.color = "#dc2626";
+        return;
+      }
+
+      // 순차 지오코딩
+      const resultStores = [];
+      let idx = 0;
+      let successCount = 0;
+      let failCount = 0;
+
+      function processNext() {
+        if (idx >= rows.length) {
+          // 완료
+          stores = resultStores;
+          saveStoresToStorage();
+          statusEl.textContent = `✅ 업로드 완료: ${successCount}개 좌표 변환 성공, ${failCount}개 실패`;
+          statusEl.style.color = "#16a34a";
+          return;
+        }
+
+        const r = rows[idx++];
+        const seq = r.순번 || r["순번"] || "";
+        const name = r.상호 || r["상호"] || "";
+        const address = r.주소 || r["주소"] || "";
+        const phone = r.전화번호 || r["전화번호"] || "";
+
+        if (!address) {
+          // 주소 없으면 좌표 없이 저장
+          resultStores.push({ seq, name, address, phone, lat: null, lng: null });
+          failCount++;
+          processNext();
+          return;
+        }
+
+        geocoder.addressSearch(address, function(res, status) {
+          if (status === kakao.maps.services.Status.OK && res && res[0]) {
+            const lat = parseFloat(res[0].y);
+            const lng = parseFloat(res[0].x);
+            resultStores.push({ seq, name, address, phone, lat, lng });
+            successCount++;
+          } else {
+            console.warn("지오코딩 실패:", address);
+            resultStores.push({ seq, name, address, phone, lat: null, lng: null });
+            failCount++;
+          }
+          // 약간의 지연을 두면 대량 처리 시 API 부담 감소
+          setTimeout(processNext, 80);
+        });
+      }
+
+      processNext();
+    };
+
+    reader.readAsArrayBuffer(fileInput.files[0]);
+  }
+
+  // 저장된 시공점 삭제
+  async function clearStorage() {
+    if (!confirm("저장된 모든 시공점 데이터를 삭제하시겠습니까?")) return;
+
+    await waitForSupabase();
+    
+    if (!window.supabaseClient) {
+      console.error("Supabase client not available");
+      alert("데이터베이스 연결에 실패했습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
+    try {
+      const { error } = await window.supabaseClient
+        .from("installer_locations")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (error) {
+        console.warn("Delete error (may be empty table):", error);
+      }
+    } catch (e) {
+      console.error("Failed to delete stores:", e);
+      console.error("Error details:", JSON.stringify(e, null, 2));
+      alert("데이터 삭제 중 오류가 발생했습니다: " + (e.message || "알 수 없는 오류"));
+    }
+
+    stores = [];
+    document.getElementById("storeCount").innerText = "0";
+    document.getElementById("uploadStatus").textContent = "데이터가 삭제되었습니다.";
+    document.getElementById("uploadStatus").style.color = "#6b7280";
+    clearMarkers();
+    clearUserMarker();
+    document.getElementById("resultList").innerHTML = "";
+    document.getElementById("selectedDetail").innerHTML =
+      '<div class="detail-empty">마커 또는 목록을 클릭하면 상세 정보가 표시됩니다.</div>';
+  }
+
+  // 추천 시공점 리스트 그리기
+  function renderResultList(nearest) {
+    const listEl = document.getElementById("resultList");
+    listEl.innerHTML = "";
+
+    if (!nearest.length) {
+      listEl.innerHTML = '<div class="detail-empty">추천 시공점이 없습니다.</div>';
+      return;
+    }
+
+    nearest.forEach((s, index) => {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.dataset.index = String(index);
+
+      const distanceStr = s.distanceKm != null ? s.distanceKm.toFixed(1) + "km" : "-";
+      const etaStr = s.etaMin != null ? s.etaMin + "분" : "-";
+
+      div.innerHTML = `
+        <div class="result-title-line">
+          <div style="display:flex;align-items:center;min-width:0;">
+            <span class="badge-rank">${index + 1}</span>
+            <span class="result-name">${escapeHtml(s.name || "")}</span>
+          </div>
+          <span class="result-distance">${distanceStr} · ${etaStr}</span>
+        </div>
+        <div class="result-address">${escapeHtml(s.address || "")}</div>
+        <div class="result-phone">${s.phone ? "📞 " + escapeHtml(s.phone) : ""}</div>
+        <button class="btn-select-workshop" onclick="selectWorkshop(${index}, event)">이 시공점 선택하기</button>
+      `;
+
+      div.addEventListener("click", function(e) {
+        // 버튼 클릭이 아닐 때만 마커 포커스
+        if (!e.target.classList.contains('btn-select-workshop')) {
+          focusShopMarker(index);
+        }
+      });
+
+      listEl.appendChild(div);
+    });
+  }
+
+  // 상세 패널 표시
+  function renderSelectedDetail(shop, rank) {
+    const detailEl = document.getElementById("selectedDetail");
+    if (!shop) {
+      detailEl.innerHTML =
+        '<div class="detail-empty">마커 또는 목록을 클릭하면 상세 정보가 표시됩니다.</div>';
+      return;
+    }
+
+    const distanceStr = shop.distanceKm != null ? shop.distanceKm.toFixed(1) + "km" : "-";
+    const etaStr = shop.etaMin != null ? shop.etaMin + "분" : "-";
+
+    detailEl.innerHTML = `
+      <div class="detail-row"><span class="detail-label">순번</span>
+        <span class="detail-value">${rank != null ? rank + "번" : (shop.seq || "-")}</span></div>
+      <div class="detail-row"><span class="detail-label">상호</span>
+        <span class="detail-value">${escapeHtml(shop.name || "")}</span></div>
+      <div class="detail-row"><span class="detail-label">주소</span>
+        <span class="detail-value">${escapeHtml(shop.address || "")}</span></div>
+      <div class="detail-row"><span class="detail-label">전화</span>
+        <span class="detail-value">${escapeHtml(shop.phone || "-")}</span></div>
+      <div class="detail-row"><span class="detail-label">거리</span>
+        <span class="detail-value">${distanceStr}</span></div>
+      <div class="detail-row"><span class="detail-label">예상</span>
+        <span class="detail-value">${etaStr}</span></div>
+      <button class="btn-select-workshop" onclick="selectWorkshopFromDetail(${rank - 1}, event)" style="margin-top: 12px; padding: 8px 16px; font-size: 13px;">이 시공점 선택하기</button>
+    `;
+  }
+  
+  // 시공점 선택 함수 (리스트에서)
+  function selectWorkshop(index, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    
+    if (!nearest || !nearest[index]) {
+      alert("시공점 정보를 찾을 수 없습니다.");
+      return;
+    }
+    
+    const shop = nearest[index];
+    if (!shop) {
+      alert("시공점 정보를 찾을 수 없습니다.");
+      return;
+    }
+    
+    // name, address, phone만 저장
+    const workshopData = {
+      name: shop.name || '',
+      address: shop.address || '',
+      phone: shop.phone || ''
+    };
+    
+    // localStorage에 저장
+    localStorage.setItem('selectedWorkshop', JSON.stringify(workshopData));
+    
+    // /accident-form로 이동
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'openAccidentPage' }, '*');
+    } else {
+      window.location.href = '/accident-form';
+    }
+  }
+  
+  // 시공점 선택 함수 (상세 패널에서)
+  function selectWorkshopFromDetail(index, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    selectWorkshop(index, event);
+  }
+
+  // 특정 순위(0~4) 시공점 마커 & 리스트 포커스
+  function focusShopMarker(index) {
+    selectedIndex = index;
+
+    // 리스트 active 처리
+    document.querySelectorAll(".result-item").forEach((el, idx) => {
+      el.classList.toggle("active", idx === index);
+    });
+
+    // 인포윈도우 열기 + 지도 센터 이동
+    infoWindows.forEach(iw => iw.close());
+    const marker = markers[index];
+    const iw = infoWindows[index];
+    if (marker && iw) {
+      iw.open(map, marker);
+      map.setCenter(marker.getPosition());
+      map.setLevel(5);
+    }
+
+    // 상세 정보
+    const shop = marker.__shopData;
+    renderSelectedDetail(shop, index + 1);
+  }
+
+  // 가장 가까운 5곳 찾기
+  function findNearest() {
+    const searchStatus = document.getElementById("searchStatus");
+    const addr = document.getElementById("addressInput").value.trim();
+
+    if (!addr) {
+      alert("고객 주소를 입력해주세요.");
+      return;
+    }
+    if (!stores.length) {
+      alert("먼저 시공점 엑셀을 업로드해주세요.");
+      return;
+    }
+
+    // geocoder 초기화 확인
+    if (!geocoder) {
+      try {
+        geocoder = new kakao.maps.services.Geocoder();
+      } catch (e) {
+        console.error("Geocoder 초기화 실패:", e);
+        searchStatus.textContent = "❌ 지도 서비스를 초기화할 수 없습니다. 페이지를 새로고침해주세요.";
+        searchStatus.style.color = "#dc2626";
+        return;
+      }
+    }
+
+    searchStatus.textContent = "주소 검색 중…";
+    searchStatus.style.color = "#4b5563";
+
+    // 타임아웃 설정 (10초)
+    const timeoutId = setTimeout(function() {
+      searchStatus.textContent = "❌ 주소 검색 시간이 초과되었습니다. 다시 시도해주세요.";
+      searchStatus.style.color = "#dc2626";
+    }, 10000);
+
+    geocoder.addressSearch(addr, function(res, status) {
+      clearTimeout(timeoutId);
+
+      if (status !== kakao.maps.services.Status.OK || !res || !res[0]) {
+        let errorMsg = "❌ 주소를 찾을 수 없습니다.";
+        if (status === kakao.maps.services.Status.ZERO_RESULT) {
+          errorMsg = "❌ 검색 결과가 없습니다. 주소를 다시 확인해주세요.";
+        } else if (status === kakao.maps.services.Status.ERROR) {
+          errorMsg = "❌ 주소 검색 중 오류가 발생했습니다.";
+        } else if (status === kakao.maps.services.Status.OVER_QUERY_LIMIT) {
+          errorMsg = "❌ 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.";
+        }
+        searchStatus.textContent = errorMsg;
+        searchStatus.style.color = "#dc2626";
+        console.error("주소 검색 실패:", status, addr);
+        return;
+      }
+
+      const lat = parseFloat(res[0].y);
+      const lng = parseFloat(res[0].x);
+      const userLatLng = new kakao.maps.LatLng(lat, lng);
+
+      // 사용자 마커
+      clearUserMarker();
+      userMarker = new kakao.maps.Marker({
+        map,
+        position: userLatLng,
+        image: new kakao.maps.MarkerImage(
+          "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_red.png",
+          new kakao.maps.Size(40, 42)
+        )
+      });
+
+      // 기존 추천 마커 제거
+      clearMarkers();
+
+      // 유효한 좌표가 있는 시공점만
+      const validStores = stores.filter(s => s.lat != null && s.lng != null);
+      if (!validStores.length) {
+        searchStatus.textContent = "❌ 좌표 정보가 있는 시공점이 없습니다. 엑셀 주소를 다시 확인해주세요.";
+        searchStatus.style.color = "#dc2626";
+        return;
+      }
+
+      // 거리 계산
+      const withDistance = validStores.map(s => {
+        const d = getDistanceKm(lat, lng, s.lat, s.lng);
+        const eta = estimateMinutes(d);
+        return { ...s, distanceKm: d, etaMin: eta };
+      });
+
+      withDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+      nearest = withDistance.slice(0, 5);
+
+      // 마커 및 인포윈도우 생성
+      // LatLngBounds 객체 생성 및 좌표 수집
+      let bounds = null;
+      const positions = [userLatLng];
+
+      try {
+        bounds = new kakao.maps.LatLngBounds();
+        if (bounds && typeof bounds.extend === 'function') {
+          bounds.extend(userLatLng);
+        } else if (bounds && typeof bounds.add === 'function') {
+          bounds.add(userLatLng);
+        }
+      } catch (e) {
+        console.warn("LatLngBounds 생성 실패, bounds 없이 진행:", e);
+      }
+
+      const blueSpriteSrc = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png";
+      const spriteSize = new kakao.maps.Size(36, 691);
+
+      nearest.forEach((s, index) => {
+        const pos = new kakao.maps.LatLng(s.lat, s.lng);
+        positions.push(pos);
+
+        const markerImage = new kakao.maps.MarkerImage(
+          blueSpriteSrc,
+          new kakao.maps.Size(36, 37),
+          {
+            spriteSize: spriteSize,
+            spriteOrigin: new kakao.maps.Point(0, index * 46),
+            offset: new kakao.maps.Point(13, 37)
+          }
+        );
+
+        const marker = new kakao.maps.Marker({
+          map,
+          position: pos,
+          image: markerImage
+        });
+
+        // 인포윈도우 내용
+        const distanceStr = s.distanceKm != null ? s.distanceKm.toFixed(1) + "km" : "-";
+        const etaStr = s.etaMin != null ? s.etaMin + "분" : "-";
+
+        const content = `
+          <div style="padding:8px 10px;min-width:190px;border-radius:8px;border:1px solid #e5e7eb;background:#ffffff;box-shadow:0 8px 16px rgba(15,23,42,0.20);">
+            <div style="font-size:12px;font-weight:600;color:#111827;margin-bottom:2px;">
+              ${index + 1}. ${escapeHtml(s.name || "")}
+            </div>
+            <div style="font-size:11px;color:#6b7280;margin-bottom:2px;">
+              ${escapeHtml(s.address || "")}
+            </div>
+            <div style="font-size:11px;color:#2563eb;margin-bottom:2px;">
+              ${s.phone ? "📞 " + escapeHtml(s.phone) : ""}
+            </div>
+            <div style="font-size:11px;color:#4b5563;">
+              거리: ${distanceStr} · 예상: ${etaStr}
+            </div>
+          </div>
+        `;
+
+        const iw = new kakao.maps.InfoWindow({
+          content: content,
+          removable: false
+        });
+
+        marker.__shopData = s;         // 상세패널용
+        markers.push(marker);
+        infoWindows.push(iw);
+
+        // bounds에 추가 (안전하게)
+        if (bounds) {
+          try {
+            if (typeof bounds.extend === 'function') {
+              bounds.extend(pos);
+            } else if (typeof bounds.add === 'function') {
+              bounds.add(pos);
+            }
+          } catch (e) {
+            console.warn("bounds에 좌표 추가 실패:", e);
+          }
+        }
+
+        kakao.maps.event.addListener(marker, "click", function() {
+          infoWindows.forEach(x => x.close());
+          iw.open(map, marker);
+          map.setCenter(marker.getPosition());
+          map.setLevel(5);
+          selectedIndex = index;
+          // 리스트 active + 상세 갱신
+          document.querySelectorAll(".result-item").forEach((el, idx) => {
+            el.classList.toggle("active", idx === index);
+          });
+          renderSelectedDetail(s, index + 1);
+        });
+      });
+
+      // 지도 bounds 맞추기
+      if (bounds && typeof map.setBounds === 'function') {
+        try {
+          map.setBounds(bounds);
+        } catch (e) {
+          console.warn("setBounds 실패, 대신 중심점 설정:", e);
+          // bounds 실패 시 첫 번째 마커로 중심 이동
+          if (nearest.length > 0 && nearest[0].lat && nearest[0].lng) {
+            map.setCenter(new kakao.maps.LatLng(nearest[0].lat, nearest[0].lng));
+            map.setLevel(6);
+          } else {
+            map.setCenter(userLatLng);
+            map.setLevel(6);
+          }
+        }
+      } else {
+        // bounds 없을 때 중심점 설정
+        if (nearest.length > 0 && nearest[0].lat && nearest[0].lng) {
+          map.setCenter(new kakao.maps.LatLng(nearest[0].lat, nearest[0].lng));
+          map.setLevel(6);
+        } else {
+          map.setCenter(userLatLng);
+          map.setLevel(6);
+        }
+      }
+
+      // 리스트 & 초기 상세
+      renderResultList(nearest);
+      renderSelectedDetail(null, null);
+
+      searchStatus.textContent = `✅ 검색 완료: 추천 시공점 ${nearest.length}곳 표시`;
+      searchStatus.style.color = "#16a34a";
+    });
+  }
+
+  // 초기화
+  function initMap() {
+    try {
+      if (typeof kakao === 'undefined' || !kakao.maps) {
+        throw new Error("Kakao Maps SDK가 로드되지 않았습니다.");
+      }
+
+      const mapContainer = document.getElementById("map");
+      if (!mapContainer) {
+        throw new Error("지도 컨테이너를 찾을 수 없습니다.");
+      }
+
+      map = new kakao.maps.Map(mapContainer, {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 7
+      });
+
+      if (typeof kakao.maps.services !== 'undefined') {
+        geocoder = new kakao.maps.services.Geocoder();
+      } else {
+        throw new Error("Geocoder 서비스를 사용할 수 없습니다.");
+      }
+
+      console.log("지도 및 Geocoder 초기화 완료");
+      console.log("Kakao Maps SDK 버전 확인:", typeof kakao.maps);
+
+      // Supabase에서 시공점 데이터 로드 (비동기)
+      loadStoresFromStorage().catch(e => console.error("Failed to load stores:", e));
+    } catch (e) {
+      console.error("지도 초기화 오류:", e);
+      const statusEl = document.getElementById("searchStatus");
+      if (statusEl) {
+        statusEl.textContent = "❌ 지도 초기화 실패: " + e.message;
+        statusEl.style.color = "#dc2626";
+      }
+      alert("지도를 초기화할 수 없습니다: " + e.message + "\n페이지를 새로고침해주세요.");
+    }
+  }
+
+  // 카카오 맵 SDK 로드 대기
+  function waitForKakaoSDK() {
+    if (typeof kakao !== 'undefined' && kakao.maps && typeof kakao.maps.load === 'function') {
+      kakao.maps.load(function() {
+        console.log("Kakao Maps SDK 로드 완료");
+        initMap();
+      });
+    } else {
+      // SDK가 아직 로드되지 않았으면 잠시 후 재시도
+      setTimeout(waitForKakaoSDK, 100);
+    }
+  }
+
+  // 페이지 로드 시 SDK 대기 및 사고위치 자동 입력
+  function initializePage() {
+    waitForKakaoSDK();
+    
+    // URL 파라미터에서 address 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    let customerAddress = urlParams.get('address');
+    
+    // URL 파라미터에 없으면 localStorage에서 가져오기
+    if (!customerAddress) {
+      customerAddress = localStorage.getItem('accident_address') || '';
+    }
+    
+    // customerAddress가 있으면 addressInput에 자동 입력
+    if (customerAddress) {
+      const addressInput = document.getElementById("addressInput");
+      if (addressInput) {
+        addressInput.value = customerAddress;
+      }
+    }
+  }
+  
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializePage);
+  } else {
+    initializePage();
+  }
+</script>
+
+</body>
+</html>

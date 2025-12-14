@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>통계 / 리포트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="stylesheet" as="style" crossorigin
+        href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  
+  <!-- jsPDF for PDF export -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      color: #2c3e50;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border: 1px solid #e1e8ed;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 24px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .filters label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .filters input[type="date"] {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .filters input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .filters button {
+      padding: 8px 16px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .filters button:hover {
+      background: #2563eb;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .summary-card.total {
+      background: #f0f0f0;
+    }
+
+    .summary-card.new {
+      background: #e3f2fd;
+    }
+
+    .summary-card.in-progress {
+      background: #fff3e0;
+    }
+
+    .summary-card.done {
+      background: #e8f5e9;
+    }
+
+    .summary-card .value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #1a202c;
+    }
+
+    .summary-card .label {
+      font-size: 14px;
+      color: #6b7280;
+    }
+
+    .section {
+      margin-bottom: 32px;
+    }
+
+    .section h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #1a202c;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stats-table thead {
+      background: #f8f9fa;
+    }
+
+    .stats-table th {
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 14px;
+      color: #374151;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .stats-table td {
+      padding: 12px;
+      font-size: 14px;
+      color: #6b7280;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .stats-table tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+
+    .error {
+      padding: 16px;
+      background: #fee2e2;
+      color: #dc2626;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .btn-export {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      color: white;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .btn-excel {
+      background: #16a34a;
+    }
+
+    .btn-excel:hover {
+      background: #15803d;
+    }
+
+    .btn-pdf {
+      background: #0f766e;
+    }
+
+    .btn-pdf:hover {
+      background: #0d9488;
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin-bottom: 24px;
+    }
+
+    .chart-wrapper {
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 16px;
+      margin-bottom: 16px;
+      background: white;
+    }
+
+    .chart-wrapper h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1a202c;
+    }
+
+    .kpi-card {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .kpi-card.active {
+      border: 2px solid #4f46e5;
+      background: rgba(79,70,229,0.05);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 1024px) {
+      .charts-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+      <h1 style="margin: 0;">📊 통계 대시보드</h1>
+      <div class="header-actions">
+        <button class="btn-export btn-excel" onclick="handleExportExcel()">Excel 다운로드</button>
+        <button class="btn-export btn-pdf" onclick="handleExportPDF()">PDF 리포트</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <label>
+        시작일:
+        <input type="date" id="startDate" />
+      </label>
+      <label>
+        종료일:
+        <input type="date" id="endDate" />
+      </label>
+      <label>
+        <input type="checkbox" id="includeDeleted" />
+        삭제 포함
+      </label>
+      <button id="searchBtn" onclick="fetchStats()">조회하기</button>
+    </div>
+
+    <div id="errorMsg" class="error" style="display: none;"></div>
+
+    <div class="summary-cards">
+      <div class="summary-card total kpi-card" id="kpiTotal" onclick="filterByStatus('')">
+        <div class="value" id="totalCount">0</div>
+        <div class="label">총 접수</div>
+      </div>
+      <div class="summary-card new kpi-card" id="kpiNew" onclick="filterByStatus('신규')">
+        <div class="value" id="newCount">0</div>
+        <div class="label">신규</div>
+      </div>
+      <div class="summary-card in-progress kpi-card" id="kpiInProgress" onclick="filterByStatus('진행중')">
+          <div class="value" id="inProgressCount">0</div>
+          <div class="value" id="progressCount" style="display: none;">0</div>
+        <div class="label">진행중</div>
+      </div>
+      <div class="summary-card done kpi-card" id="kpiDone" onclick="filterByStatus('완료')">
+        <div class="value" id="doneCount">0</div>
+        <div class="label">완료</div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="charts-grid">
+      <div class="chart-wrapper">
+        <h3>일별 접수 추이</h3>
+        <div class="chart-container">
+          <canvas id="dailyChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <h3>보험사별 접수 비중</h3>
+        <div class="chart-container">
+          <canvas id="insurerChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <h3>월별 접수 건수</h3>
+        <div class="chart-container">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <h3>시공점별 배정 TOP 10</h3>
+        <div class="chart-container">
+          <canvas id="shopChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-wrapper">
+        <h3>담당자별 처리 건수</h3>
+        <div class="chart-container">
+          <canvas id="managerChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>담당자별 처리 건수 통계</h3>
+      <div id="managerStatsContainer">
+        <div class="loading">데이터를 불러오는 중...</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>일별 접수 통계</h3>
+      <div id="dailyStatsContainer">
+        <div class="loading">데이터를 불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Supabase 초기화 -->
+  <script src="/js/supabaseclient.js"></script>
+  
+  <!-- Accident API -->
+  <script src="/js/accidentapi.js" defer></script>
+
+  <script>
+    let isSupabaseReady = false;
+    let allRecords = [];
+    let filteredRecords = [];
+    let selectedStatus = "";
+    let dailyChart, insurerChart, monthlyChart, shopChart, managerChart;
+    let managerStatsData = []; // 담당자별 통계 데이터 (차트 확장용)
+
+    // 통계 대시보드 집계 함수
+    async function loadDashboardStats() {
+      try {
+        await waitForSupabase();
+        
+        // API 함수 확인
+        if (!window.API || !window.API.fetchDashboardStats) {
+          console.warn('fetchDashboardStats API 함수를 찾을 수 없습니다.');
+          return;
+        }
+
+        const stats = await window.API.fetchDashboardStats(
+          document.getElementById('startDate').value,
+          document.getElementById('endDate').value
+        );
+
+        // 통계 카드 업데이트
+        document.getElementById('totalCount').innerText = stats.total;
+        document.getElementById('newCount').innerText = stats.new;
+        document.getElementById('progressCount').innerText = stats.progress;
+        document.getElementById('doneCount').innerText = stats.done;
+      } catch (error) {
+        console.error('통계 집계 오류:', error);
+        showError('통계를 불러오는 중 오류가 발생했습니다: ' + error.message);
+      }
+    }
+
+    // Wait for Supabase to be ready
+    function waitForSupabase() {
+      return new Promise((resolve) => {
+        // window.supabase 또는 window.supabaseClient 확인
+        if ((window.supabase || window.supabaseClient) && (window.supabaseReady || window.__supabaseReady)) {
+          isSupabaseReady = true;
+          resolve();
+          return;
+        }
+        
+        window.addEventListener('supabaseReady', () => {
+          isSupabaseReady = true;
+          resolve();
+        }, { once: true });
+        
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          if (!isSupabaseReady) {
+            showError("Supabase 초기화 시간이 초과되었습니다. 페이지를 새로고침해주세요.");
+          }
+          resolve();
+        }, 5000);
+      });
+    }
+
+    function showError(message) {
+      const errorMsg = document.getElementById("errorMsg");
+      errorMsg.textContent = message;
+      errorMsg.style.display = "block";
+      setTimeout(() => {
+        errorMsg.style.display = "none";
+      }, 5000);
+    }
+
+    async function fetchStats() {
+      await waitForSupabase();
+      
+      // window.supabase 또는 window.supabaseClient 사용
+      const supabase = window.supabase || window.supabaseClient;
+      
+      if (!supabase) {
+        showError("Supabase 클라이언트를 찾을 수 없습니다.");
+        return;
+      }
+
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const includeDeleted = document.getElementById("includeDeleted").checked;
+
+      try {
+        let query = supabase
+          .from("accident_records")
+          .select("*", { count: "exact" });
+
+        if (!includeDeleted) {
+          query = query.eq("is_deleted", false);
+        }
+        if (startDate) {
+          query = query.gte("created_at", startDate);
+        }
+        if (endDate) {
+          query = query.lte("created_at", endDate + " 23:59:59");
+        }
+
+        const { data, count, error } = await query;
+        
+        if (error) {
+          console.error("Error fetching stats:", error);
+          showError("데이터를 불러오는 중 오류가 발생했습니다: " + error.message);
+          return;
+        }
+
+        allRecords = data || [];
+        applyFilters();
+        
+        // 담당자별 통계 데이터 로드
+        await loadManagerStats();
+
+        // 통계 대시보드 집계 (새로운 API 함수 사용)
+        await loadDashboardStats();
+      } catch (error) {
+        console.error("Error in fetchStats:", error);
+        showError("통계를 불러오는 중 오류가 발생했습니다: " + error.message);
+      }
+    }
+
+    function applyFilters() {
+      filteredRecords = allRecords;
+      if (selectedStatus) {
+        filteredRecords = allRecords.filter(r => r.status === selectedStatus);
+      }
+      updateCharts();
+      updateTable();
+      // 필터링된 레코드에 대해 담당자별 통계도 업데이트
+      loadManagerStats();
+    }
+
+    function filterByStatus(status) {
+      selectedStatus = selectedStatus === status ? "" : status;
+      
+      // Update KPI card active state
+      document.querySelectorAll('.kpi-card').forEach(card => card.classList.remove('active'));
+      if (selectedStatus === '') {
+        document.getElementById('kpiTotal').classList.add('active');
+      } else if (selectedStatus === '신규') {
+        document.getElementById('kpiNew').classList.add('active');
+      } else if (selectedStatus === '진행중') {
+        document.getElementById('kpiInProgress').classList.add('active');
+      } else if (selectedStatus === '완료') {
+        document.getElementById('kpiDone').classList.add('active');
+      }
+      
+      applyFilters();
+    }
+
+    function updateCharts() {
+      // Daily stats
+      const dailyGrouped = {};
+      filteredRecords.forEach(r => {
+        const d = (r.created_at || "").split("T")[0];
+        if (d) dailyGrouped[d] = (dailyGrouped[d] || 0) + 1;
+      });
+      const dailyData = Object.entries(dailyGrouped)
+        .map(([day, count]) => ({ day, count }))
+        .sort((a, b) => a.day.localeCompare(b.day));
+
+      if (dailyChart) dailyChart.destroy();
+      const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+      dailyChart = new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+          labels: dailyData.map(d => d.day),
+          datasets: [{
+            label: '접수 건수',
+            data: dailyData.map(d => d.count),
+            borderColor: '#4f46e5',
+            backgroundColor: 'rgba(79,70,229,0.1)',
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      // Insurer stats
+      const insurerGrouped = {};
+      filteredRecords.forEach(r => {
+        const key = r.insurance || r.insurer || "미지정";
+        insurerGrouped[key] = (insurerGrouped[key] || 0) + 1;
+      });
+      const insurerData = Object.entries(insurerGrouped).map(([insurer, count]) => ({ insurer, count }));
+
+      if (insurerChart) insurerChart.destroy();
+      const insurerCtx = document.getElementById('insurerChart').getContext('2d');
+      insurerChart = new Chart(insurerCtx, {
+        type: 'pie',
+        data: {
+          labels: insurerData.map(d => d.insurer),
+          datasets: [{
+            data: insurerData.map(d => d.count),
+            backgroundColor: ['#4f46e5', '#22c55e', '#f97316', '#0ea5e9', '#e11d48', '#6366f1']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+
+      // Monthly stats
+      const monthlyGrouped = {};
+      filteredRecords.forEach(r => {
+        const d = (r.created_at || "").slice(0, 7);
+        if (d) monthlyGrouped[d] = (monthlyGrouped[d] || 0) + 1;
+      });
+      const monthlyData = Object.entries(monthlyGrouped).map(([month, count]) => ({ month, count }));
+
+      if (monthlyChart) monthlyChart.destroy();
+      const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+      monthlyChart = new Chart(monthlyCtx, {
+        type: 'bar',
+        data: {
+          labels: monthlyData.map(d => d.month),
+          datasets: [{
+            label: '접수 건수',
+            data: monthlyData.map(d => d.count),
+            backgroundColor: '#22c55e'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+
+      // Shop stats (TOP 10)
+      const shopGrouped = {};
+      filteredRecords.forEach(r => {
+        const key = r.assigned_workshop_name || "미배정";
+        shopGrouped[key] = (shopGrouped[key] || 0) + 1;
+      });
+      const shopData = Object.entries(shopGrouped)
+        .map(([shop, count]) => ({ shop, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      if (shopChart) shopChart.destroy();
+      const shopCtx = document.getElementById('shopChart').getContext('2d');
+      shopChart = new Chart(shopCtx, {
+        type: 'bar',
+        data: {
+          labels: shopData.map(d => d.shop),
+          datasets: [{
+            label: '배정 건수',
+            data: shopData.map(d => d.count),
+            backgroundColor: '#f97316'
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+      
+      // Manager stats chart
+      if (managerChart) managerChart.destroy();
+      if (managerStatsData.length > 0) {
+        const managerCtx = document.getElementById('managerChart').getContext('2d');
+        managerChart = new Chart(managerCtx, {
+          type: 'bar',
+          data: {
+            labels: managerStatsData.map(d => d.manager_name || '미지정'),
+            datasets: [{
+              label: '처리 건수',
+              data: managerStatsData.map(d => d.total_cases),
+              backgroundColor: '#8b5cf6'
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false }
+            }
+          }
+        });
+      }
+    }
+    
+    // 담당자별 통계 데이터 로드
+    async function loadManagerStats() {
+      try {
+        // users 테이블에서 모든 사용자 정보 가져오기
+        const { data: users, error: usersError } = await window.supabase
+          .from('users')
+          .select('id, name');
+        
+        if (usersError) {
+          console.error('사용자 정보 조회 실패:', usersError);
+          return;
+        }
+        
+        // 사용자 ID를 이름으로 매핑
+        const userMap = {};
+        (users || []).forEach(user => {
+          userMap[user.id] = user.name;
+        });
+        
+        // manager_id 기준으로 그룹핑
+        const managerGrouped = {};
+        filteredRecords.forEach(record => {
+          const managerId = record.manager_id;
+          if (managerId) {
+            if (!managerGrouped[managerId]) {
+              managerGrouped[managerId] = {
+                manager_id: managerId,
+                manager_name: userMap[managerId] || '미지정',
+                total_cases: 0
+              };
+            }
+            managerGrouped[managerId].total_cases++;
+          }
+        });
+        
+        // 배열로 변환하고 처리 건수 내림차순 정렬
+        managerStatsData = Object.values(managerGrouped)
+          .sort((a, b) => b.total_cases - a.total_cases);
+        
+        // UI 업데이트
+        updateManagerStatsTable();
+      } catch (error) {
+        console.error('담당자별 통계 로드 중 오류:', error);
+      }
+    }
+    
+    // 담당자별 통계 테이블 업데이트
+    function updateManagerStatsTable() {
+      const container = document.getElementById("managerStatsContainer");
+      
+      if (managerStatsData.length === 0) {
+        container.innerHTML = "<div class='loading'>담당자별 통계 데이터가 없습니다.</div>";
+        return;
+      }
+      
+      container.innerHTML = `
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>순위</th>
+              <th>담당자</th>
+              <th>처리 건수</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${managerStatsData.map((stat, index) => `
+              <tr>
+                <td>${index + 1}</td>
+                <td>${stat.manager_name || '미지정'}</td>
+                <td>${stat.total_cases}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function updateTable() {
+      const dailyGrouped = {};
+      filteredRecords.forEach(r => {
+        const d = (r.created_at || "").split("T")[0];
+        if (d) dailyGrouped[d] = (dailyGrouped[d] || 0) + 1;
+      });
+      const dailyStats = Object.entries(dailyGrouped)
+        .map(([day, count]) => ({ day, count }))
+        .sort((a, b) => a.day.localeCompare(b.day));
+
+      const container = document.getElementById("dailyStatsContainer");
+      if (dailyStats.length === 0) {
+        container.innerHTML = "<div class='loading'>표시할 데이터가 없습니다.</div>";
+      } else {
+        container.innerHTML = `
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>접수 건수</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${dailyStats.map(stat => `
+                <tr>
+                  <td>${stat.day}</td>
+                  <td>${stat.count}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      }
+    }
+
+    function handleExportExcel() {
+      if (!filteredRecords.length) {
+        alert("다운로드할 데이터가 없습니다.");
+        return;
+      }
+
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+
+      const headers = ["접수번호", "접수일시", "고객명", "연락처", "차량번호", "차종", "사고위치", "보험사", "배정 시공점", "상태"];
+      const rows = filteredRecords.map(r => [
+        r.receipt_number || r.case_no || "",
+        r.created_at || "",
+        r.customer_name || "",
+        r.phone || "",
+        r.car_number || r.car_no || "",
+        r.car_model || "",
+        r.accident_location || "",
+        r.insurance || r.insurer || "",
+        r.assigned_workshop_name || "",
+        r.status || ""
+      ]);
+
+      function escapeCsv(value) {
+        const str = String(value ?? "");
+        if (/[",\n]/.test(str)) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }
+
+      const csv = "\uFEFF" + [headers.join(","), ...rows.map(row => row.map(escapeCsv).join(","))].join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `accident_stats_${startDate}_${endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function handleExportPDF() {
+      if (!filteredRecords.length) {
+        alert("다운로드할 데이터가 없습니다.");
+        return;
+      }
+
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF("landscape");
+      doc.setFontSize(14);
+      doc.text("유리 교체 사고 접수 통계 리포트", 14, 18);
+      doc.setFontSize(10);
+      doc.text(`기간: ${startDate || "-"} ~ ${endDate || "-"}`, 14, 26);
+      if (selectedStatus) {
+        doc.text(`상태 필터: ${selectedStatus}`, 14, 32);
+      }
+
+      const headers = [["접수번호", "접수일시", "고객명", "연락처", "차량번호", "차종", "사고위치", "보험사", "배정 시공점", "상태"]];
+      const body = filteredRecords.map(r => [
+        r.receipt_number || r.case_no || "",
+        r.created_at || "",
+        r.customer_name || "",
+        r.phone || "",
+        r.car_number || r.car_no || "",
+        r.car_model || "",
+        r.accident_location || "",
+        r.insurance || r.insurer || "",
+        r.assigned_workshop_name || "",
+        r.status || ""
+      ]);
+
+      doc.autoTable({
+        head: headers,
+        body: body,
+        startY: 36,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [79, 70, 229] }
+      });
+
+      doc.save(`accident_stats_${startDate}_${endDate}.pdf`);
+    }
+
+    // Load stats on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+      await waitForSupabase();
+      
+      // Set default date range (last 30 days)
+      const today = new Date();
+      const from = new Date();
+      from.setDate(today.getDate() - 30);
+      document.getElementById("startDate").value = from.toISOString().slice(0, 10);
+      document.getElementById("endDate").value = today.toISOString().slice(0, 10);
+      
+      // 통계 대시보드 집계 먼저 실행
+      loadDashboardStats();
+      // 전체 통계도 함께 로드
+      fetchStats();
+      
+      // 조회 버튼에 통계 집계 이벤트 연결
+      const searchBtn = document.getElementById('searchBtn');
+      if (searchBtn) {
+        searchBtn.addEventListener('click', loadDashboardStats);
+      }
+    });
+  </script>
+</body>
+</html>
+

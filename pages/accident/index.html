@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SA System 사고 접수</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- 카카오 SDK -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.5.0/kakao.min.js"></script>
+  
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- Supabase 초기화 -->
+  <script src="/js/supabaseclient.js"></script>
+  <script src="/js/statusConfig.js"></script>
+  <script src="/js/accidentapi.js" defer></script>
+  <script>
+    // 세션 체크 및 API 함수 초기화
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        // supabaseClient 초기화 대기 (supabaseclient.js에서 초기화됨)
+        let retryCount = 0;
+        while (!window.supabaseClient && retryCount < 10) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          retryCount++;
+        }
+        
+        if (!window.supabaseClient) {
+          console.error("❌ Supabase client가 초기화되지 않았습니다.");
+          alert("Supabase 초기화 실패. 페이지를 새로고침해주세요.");
+          return;
+        }
+        
+        const supabase = window.supabaseClient;
+        
+        // 세션 체크
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          alert("로그인이 필요합니다. 다시 로그인해주세요.");
+          location.href = "/login.html";
+          return;
+        }
+
+        // 전역 변수로 설정 (단일 인스턴스)
+        window.supabase = supabase;
+        
+        // API 함수들은 이미 accidentApi.js에서 전역으로 설정됨
+        // API 함수 로드 확인
+        if (!window.API && !window.saveAccidentRecord) {
+          console.error("❌ API 함수들이 로드되지 않았습니다. accidentApi.js 파일을 확인하세요.");
+        }
+        
+        // 초기화 완료 신호
+        window.supabaseReady = true;
+        window.dispatchEvent(new CustomEvent('supabaseReady'));
+        
+        // 페이지 로드 시 메시지 생성 버튼 초기 상태 설정
+        // 접수 저장 전에는 메시지 생성 버튼 비활성화
+        const messageButton = document.querySelector('.btn-kakao-vendor');
+        if (messageButton) {
+          // sessionStorage에 accidentId가 있으면 활성화
+          const savedAccidentId = sessionStorage.getItem('currentAccidentId');
+          if (savedAccidentId) {
+            messageButton.disabled = false;
+            window.currentRecordId = savedAccidentId;
+          } else {
+            messageButton.disabled = true;
+          }
+        }
+        
+        // 초기화 완료 로그
+        console.log("✅ Supabase 초기화 완료");
+        console.log("✅ Supabase client:", window.supabaseClient);
+        console.log("✅ API 객체:", window.API);
+        console.log("✅ API functions loaded:", {
+          API_saveAccident: typeof window.API?.saveAccident,
+          saveAccidentRecord: typeof window.saveAccidentRecord,
+          fetchAccidentRecords: typeof window.fetchAccidentRecords
+        });
+      } catch (error) {
+        console.error("❌ Supabase 초기화 실패:", error);
+        alert("Supabase 초기화 실패: " + error.message + "\n페이지를 새로고침해주세요.");
+      }
+    });
+
+    // Kakao 초기화
+    document.addEventListener("DOMContentLoaded", () => {
+        if (window.Kakao && !Kakao.isInitialized()) {
+            Kakao.init("7984dc779fbf2deb1028140bb5cff0f9");
+            console.log("Kakao initialized:", Kakao.isInitialized());
+        }
+    });
+  </script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      background: #111;
+      color: white;
+      padding: 14px 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      background: white;
+      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      padding: 12px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      resize: none;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 18px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-grid label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      text-align: left;
+    }
+
+    .form-grid input {
+      padding: 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-grid input:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .form-grid select {
+      padding: 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      background-color: white;
+      cursor: pointer;
+    }
+
+    .form-grid select:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .status {
+      margin-top: 12px;
+      font-weight: bold;
+      color: green;
+    }
+
+    /* 필드 자동 인식 상태 표시 */
+    .field-auto-filled {
+      background-color: #d1fae5 !important; /* 연두색 */
+      border-color: #10b981 !important;
+    }
+
+    .field-manual {
+      background-color: white !important;
+      border-color: #ccc !important;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .button-group {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .button-group button {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: Arial, sans-serif;
+    }
+
+    .button-group button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn-save {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-save:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-kakao-vendor {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-kakao-vendor:hover {
+      background: #059669;
+    }
+
+    .btn-kakao-installer {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-kakao-installer:hover {
+      background: #d97706;
+    }
+
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #dc2626;
+    }
+
+    /* 상태 뱃지 스타일 */
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .status-received {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .status-assigned {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .status-scheduled {
+      background: #e9d5ff;
+      color: #6b21a8;
+    }
+
+    .status-completed {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-pending {
+      background: #fed7aa;
+      color: #9a3412;
+    }
+
+    .status-settled {
+      background: #10b981;
+      color: white;
+    }
+
+    .status-closed {
+      background: #4b5563;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>🚗 에스에이시스템 사고 접수 시스템</header>
+
+<div class="container">
+
+  <h2>카카오톡 사고 접수 내용 입력</h2>
+  <textarea id="kakaoRaw" placeholder="카카오톡 메시지를 복사하여 그대로 붙여넣으세요"></textarea>
+  <div style="display: flex; gap: 8px; margin-top: 8px;">
+    <button onclick="fillFromKakao()" style="padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; background: #10b981; color: white; transition: all 0.2s;">자동 입력</button>
+    <button onclick="openWorkshopMap()" style="padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; background: #2563eb; color: white; transition: all 0.2s;">시공점 찾기</button>
+  </div>
+
+  <h2 style="margin-top:30px;">신규 사고 접수</h2>
+
+  <div class="form-grid">
+    <div class="form-field">
+      <label for="receiptNumber">접수번호</label>
+      <input id="receiptNumber" placeholder="접수번호" />
+    </div>
+    
+    <div class="form-field">
+      <label for="accidentTime">사고일시</label>
+      <input id="accidentTime" placeholder="사고일시" />
+    </div>
+    
+    <div class="form-field">
+      <label for="customerName">고객명</label>
+      <input id="customerName" placeholder="고객명" />
+    </div>
+    
+    <div class="form-field">
+      <label for="phone">연락처</label>
+      <input id="phone" placeholder="연락처" />
+    </div>
+    
+    <div class="form-field">
+      <label for="carNumber">차량번호</label>
+      <input id="carNumber" placeholder="차량번호" />
+    </div>
+    
+    <div class="form-field">
+      <label for="vin">VIN</label>
+      <input id="vin" placeholder="차대번호" />
+    </div>
+    
+    <div class="form-field">
+      <label for="carModel">차명</label>
+      <input id="carModel" placeholder="차명" />
+    </div>
+    
+    <div class="form-field">
+      <label for="deductible">면책금</label>
+      <input id="deductible" placeholder="면책금" />
+    </div>
+    
+    <div class="form-field">
+      <label for="deductiblePayType">면책금 납부방식</label>
+      <input id="deductiblePayType" placeholder="선납 / 후납" />
+    </div>
+    
+    <div class="form-field">
+      <label for="insurer">보험사</label>
+      <input id="insurer" placeholder="보험사" />
+    </div>
+    
+    <div class="form-field">
+      <label for="damageType">파손유형</label>
+      <input id="damageType" placeholder="파손유형" />
+    </div>
+    
+    <div class="form-field">
+      <label for="manager">담당자</label>
+      <input id="manager" placeholder="담당자" />
+    </div>
+    
+    <div class="form-field">
+      <label for="accidentLocation">사고위치</label>
+      <input id="accidentLocation" placeholder="사고위치" />
+    </div>
+    
+    <div class="form-field">
+      <label for="memo">비고</label>
+      <input id="memo" placeholder="접수 메모" />
+    </div>
+    
+    <!-- 상태 관리 필드 -->
+    <div class="form-field" id="statusFieldContainer" style="display: none;">
+      <label for="accidentStatus">상태</label>
+      <select id="accidentStatus" style="padding: 10px; font-size: 13px; border-radius: 6px; border: 1px solid #ccc; width: 100%; box-sizing: border-box;">
+        <option value="접수완료">접수완료</option>
+        <option value="배정완료">배정완료</option>
+        <option value="시공예정">시공예정</option>
+        <option value="시공완료">시공완료</option>
+        <option value="정산대기">정산대기</option>
+        <option value="정산완료">정산완료</option>
+        <option value="종료">종료</option>
+      </select>
+      <div id="statusBadge" style="margin-top: 8px;"></div>
+    </div>
+    
+    <!-- 배정 시공점 필드 -->
+    <div class="form-field" style="grid-column: 1 / -1; border-top: 2px solid #e5e7eb; padding-top: 16px; margin-top: 8px;">
+      <label style="font-weight: 600; color: #2563eb;">🔧 배정 시공점 정보</label>
+    </div>
+    
+    <div class="form-field">
+      <label for="assignedWorkshopName">배정 시공점명</label>
+      <input id="assignedWorkshopName" placeholder="배정 시공점명" readonly style="background-color: #f3f4f6;" />
+    </div>
+    
+    <div class="form-field">
+      <label for="assignedWorkshopAddress">배정 시공점 주소</label>
+      <input id="assignedWorkshopAddress" placeholder="배정 시공점 주소" readonly style="background-color: #f3f4f6;" />
+    </div>
+    
+    <div class="form-field">
+      <label for="assignedWorkshopPhone">배정 시공점 전화번호</label>
+      <input id="assignedWorkshopPhone" placeholder="배정 시공점 전화번호" readonly style="background-color: #f3f4f6;" />
+    </div>
+  </div>
+
+  <div class="button-group" style="margin-top:16px;">
+    <button class="btn-save" onclick="saveAccident()">📁 접수 저장</button>
+    <button class="btn-kakao-vendor" onclick="openMessagePage()">💬 메시지 생성</button>
+    <button class="btn-delete" onclick="deleteCurrentRecord()" id="deleteBtn" style="display: none;">🗑️ 접수 삭제</button>
+  </div>
+
+  <div class="status" id="statusMsg"></div>
+
+  <!-- 상태 변경 이력 섹션 -->
+  <div id="statusHistorySection" style="display: none; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+    <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #374151;">📋 상태 변경 이력</h3>
+    <div id="statusHistoryContainer" style="max-height: 300px; overflow-y: auto; padding: 12px; background: #f9fafb; border-radius: 8px;">
+      <p style="color: #9ca3af; font-size: 14px;">로딩 중...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// 전역 변수: 담당자 ID 저장
+let managerId = null;
+
+// Wait for Supabase to be ready
+function waitForSupabase() {
+  return new Promise((resolve, reject) => {
+    // Check if both client and API functions are ready
+    if (window.supabaseClient && (window.API?.saveAccident || window.saveAccidentRecord)) {
+      resolve();
+      return;
+    }
+    
+    // Listen for supabaseReady event
+    window.addEventListener('supabaseReady', () => {
+      // Double-check API functions are available
+      if (window.API?.saveAccident || window.saveAccidentRecord) {
+        resolve();
+      } else {
+        console.warn('Supabase ready but API functions not available');
+        // Still resolve to allow fallback error handling
+        resolve();
+      }
+    }, { once: true });
+    
+    // Fallback timeout
+    setTimeout(() => {
+      if (window.supabaseClient && (window.API?.saveAccident || window.saveAccidentRecord)) {
+        resolve();
+      } else {
+        console.warn('Supabase client or API functions not ready after timeout');
+        // Still resolve to allow fallback error handling
+        resolve();
+      }
+    }, 3000); // Increased timeout to 3 seconds
+  });
+}
+
+// 폼 데이터를 localStorage에 저장
+function saveFormToLocalStorage() {
+  try {
+    const formData = {
+      receiptNumber: document.getElementById("receiptNumber")?.value || '',
+      accidentTime: document.getElementById("accidentTime")?.value || '',
+      customerName: document.getElementById("customerName")?.value || '',
+      phone: document.getElementById("phone")?.value || '',
+      carNumber: document.getElementById("carNumber")?.value || '',
+      vin: document.getElementById("vin")?.value || '',
+      carModel: document.getElementById("carModel")?.value || '',
+      deductible: document.getElementById("deductible")?.value || '',
+      deductiblePayType: document.getElementById("deductiblePayType")?.value || '',
+      insurer: document.getElementById("insurer")?.value || '',
+      damageType: document.getElementById("damageType")?.value || '',
+      manager: document.getElementById("manager")?.value || '',
+      accidentLocation: document.getElementById("accidentLocation")?.value || '',
+      memo: document.getElementById("memo")?.value || '',
+      assignedWorkshopName: document.getElementById("assignedWorkshopName")?.value || '',
+      assignedWorkshopAddress: document.getElementById("assignedWorkshopAddress")?.value || '',
+      assignedWorkshopPhone: document.getElementById("assignedWorkshopPhone")?.value || ''
+    };
+    localStorage.setItem('accidentForm', JSON.stringify(formData));
+  } catch (e) {
+    console.warn("Failed to save form to localStorage:", e);
+  }
+}
+
+// localStorage에서 폼 데이터 로드
+function loadFormFromLocalStorage() {
+  try {
+    const savedData = localStorage.getItem('accidentForm');
+    if (!savedData) return false;
+    
+    const formData = JSON.parse(savedData);
+    
+    // 모든 필드 복원
+    if (formData.receiptNumber !== undefined) document.getElementById("receiptNumber").value = formData.receiptNumber || '';
+    if (formData.accidentTime !== undefined) document.getElementById("accidentTime").value = formData.accidentTime || '';
+    if (formData.customerName !== undefined) document.getElementById("customerName").value = formData.customerName || '';
+    if (formData.phone !== undefined) document.getElementById("phone").value = formData.phone || '';
+    if (formData.carNumber !== undefined) document.getElementById("carNumber").value = formData.carNumber || '';
+    if (formData.vin !== undefined) document.getElementById("vin").value = formData.vin || '';
+    if (formData.carModel !== undefined) document.getElementById("carModel").value = formData.carModel || '';
+    if (formData.deductible !== undefined) document.getElementById("deductible").value = formData.deductible || '';
+    if (formData.deductiblePayType !== undefined) document.getElementById("deductiblePayType").value = formData.deductiblePayType || '';
+    if (formData.insurer !== undefined) document.getElementById("insurer").value = formData.insurer || '';
+    if (formData.damageType !== undefined) document.getElementById("damageType").value = formData.damageType || '';
+    if (formData.manager !== undefined) document.getElementById("manager").value = formData.manager || '';
+    if (formData.accidentLocation !== undefined) document.getElementById("accidentLocation").value = formData.accidentLocation || '';
+    if (formData.memo !== undefined) document.getElementById("memo").value = formData.memo || '';
+    if (formData.assignedWorkshopName !== undefined) document.getElementById("assignedWorkshopName").value = formData.assignedWorkshopName || '';
+    if (formData.assignedWorkshopAddress !== undefined) document.getElementById("assignedWorkshopAddress").value = formData.assignedWorkshopAddress || '';
+    if (formData.assignedWorkshopPhone !== undefined) document.getElementById("assignedWorkshopPhone").value = formData.assignedWorkshopPhone || '';
+    
+    return true;
+  } catch (e) {
+    console.warn("Failed to load form from localStorage:", e);
+    return false;
+  }
+}
+
+// localStorage에서 폼 데이터 삭제
+function clearFormFromLocalStorage() {
+  try {
+    localStorage.removeItem('accidentForm');
+  } catch (e) {
+    console.warn("Failed to clear form from localStorage:", e);
+  }
+}
+
+// 모든 입력 필드에 변경 이벤트 리스너 추가
+function setupFormAutoSave() {
+  const fieldIds = [
+    'receiptNumber', 'accidentTime', 'customerName', 'phone', 'carNumber', 'vin',
+    'carModel', 'deductible', 'deductiblePayType', 'insurer', 'damageType',
+    'manager', 'accidentLocation', 'memo',
+    'assignedWorkshopName', 'assignedWorkshopAddress', 'assignedWorkshopPhone'
+  ];
+  
+  fieldIds.forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('input', saveFormToLocalStorage);
+      element.addEventListener('change', saveFormToLocalStorage);
+    }
+  });
+}
+
+// URL에서 receipt_number 파라미터 추출
+function getReceiptNumberFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('receipt_number');
+}
+
+// 폼 필드 채우기 함수
+function fillAccidentForm(data) {
+  if (!data) return;
+  
+  // 접수번호
+  const caseNo = data.case_no || data.receipt_number;
+  if (caseNo) {
+    const receiptNumberEl = document.getElementById("receiptNumber");
+    if (receiptNumberEl) receiptNumberEl.value = caseNo;
+  }
+  
+  // 사고일시: ISO 형식을 로컬 형식으로 변환
+  const incidentDate = data.incident_date || data.accident_time;
+  if (incidentDate) {
+    try {
+      const date = new Date(incidentDate);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const accidentTimeEl = document.getElementById("accidentTime");
+        if (accidentTimeEl) accidentTimeEl.value = `${year}-${month}-${day} ${hours}:${minutes}`;
+      } else {
+        const accidentTimeEl = document.getElementById("accidentTime");
+        if (accidentTimeEl) accidentTimeEl.value = incidentDate;
+      }
+    } catch (e) {
+      console.warn("날짜 변환 오류:", e);
+      const accidentTimeEl = document.getElementById("accidentTime");
+      if (accidentTimeEl) accidentTimeEl.value = incidentDate;
+    }
+  }
+  
+  // 나머지 필드들
+  if (data.customer_name) {
+    const el = document.getElementById("customerName");
+    if (el) el.value = data.customer_name;
+  }
+  if (data.phone) {
+    const el = document.getElementById("phone");
+    if (el) el.value = data.phone;
+  }
+  const carNo = data.car_no || data.car_number;
+  if (carNo) {
+    const el = document.getElementById("carNumber");
+    if (el) el.value = carNo;
+  }
+  if (data.vin) {
+    const el = document.getElementById("vin");
+    if (el) el.value = data.vin;
+  }
+  const carModel = data.car_model || data.vehicle_model;
+  if (carModel) {
+    const el = document.getElementById("carModel");
+    if (el) el.value = carModel;
+  }
+  const damageType = data.damage_type || data.damage_location;
+  if (damageType) {
+    const el = document.getElementById("damageType");
+    if (el) el.value = damageType;
+  }
+  const insurance = data.insurance || data.insurer;
+  if (insurance) {
+    const el = document.getElementById("insurer");
+    if (el) el.value = insurance;
+  }
+  if (data.accident_location) {
+    const el = document.getElementById("accidentLocation");
+    if (el) el.value = data.accident_location;
+  }
+  const manager = data.manager || data.branch;
+  if (manager) {
+    const el = document.getElementById("manager");
+    if (el) el.value = manager;
+  }
+  // manager_id 로드 (변경 이력 로그용)
+  if (data.manager_id && typeof managerId !== 'undefined') {
+    managerId = data.manager_id;
+  }
+        // 상태 필드 표시 및 값 설정
+  const statusFieldContainer = document.getElementById("statusFieldContainer");
+  if (statusFieldContainer) {
+    statusFieldContainer.style.display = "block";
+  }
+  
+  // 상태 변경 이력 섹션 표시
+  const statusHistorySection = document.getElementById("statusHistorySection");
+  if (statusHistorySection) {
+    statusHistorySection.style.display = "block";
+  }
+  
+  // 상태 자동 세팅 함수
+  function setStatusSelect(status) {
+    const select = document.getElementById("accidentStatus");
+    if (!select || !status) return;
+    select.value = status;
+    if (typeof currentStatus !== 'undefined') {
+      currentStatus = status;
+    }
+  }
+  
+  if (data.status) {
+    setStatusSelect(data.status);
+  } else {
+    setStatusSelect("접수완료");
+  }
+  
+  // 상태 뱃지 업데이트
+  updateStatusBadge(data.status || "접수완료");
+  
+  // 상태 옵션 업데이트
+  updateStatusOptions(data.status || "접수완료");
+  
+  // 상태 변경 이력 로드
+  if (caseNo) {
+    loadStatusHistory(caseNo);
+  }
+  if (data.deductible) {
+    const el = document.getElementById("deductible");
+    if (el) el.value = data.deductible;
+  }
+  const deductibleType = data.deductible_type || data.deductible_pay_type;
+  if (deductibleType) {
+    const el = document.getElementById("deductiblePayType");
+    if (el) el.value = deductibleType;
+  }
+  const memo = data.memo || data.request_detail;
+  if (memo) {
+    const el = document.getElementById("memo");
+    if (el) el.value = memo;
+  }
+  
+  // 배정 시공점 정보
+  if (data.assigned_workshop_name) {
+    const el = document.getElementById("assignedWorkshopName");
+    if (el) el.value = data.assigned_workshop_name;
+  }
+  if (data.assigned_workshop_address) {
+    const el = document.getElementById("assignedWorkshopAddress");
+    if (el) el.value = data.assigned_workshop_address;
+  }
+  if (data.assigned_workshop_phone) {
+    const el = document.getElementById("assignedWorkshopPhone");
+    if (el) el.value = data.assigned_workshop_phone;
+  }
+}
+
+// URL 파라미터에서 edit/id/receipt_number 모드 확인
+document.addEventListener('DOMContentLoaded', async function() {
+  await waitForSupabase();
+  const urlParams = new URLSearchParams(window.location.search);
+  const editReceiptNumber = urlParams.get('edit') || urlParams.get('id') || getReceiptNumberFromURL();
+  
+  // receipt_number 파라미터가 있으면 처리
+  const receiptNumber = getReceiptNumberFromURL();
+  if (receiptNumber) {
+    console.log('[receipt_number 감지]', receiptNumber);
+    
+    if (!window.supabaseClient) {
+      console.error("Supabase client not available");
+      alert("데이터베이스 연결에 실패했습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
+    try {
+      const data = await window.loadAccidentByReceiptNumber(receiptNumber);
+      
+      if (data) {
+        fillAccidentForm(data);
+        
+        // 레코드 ID 저장 (삭제 기능용 및 메시지 생성용)
+        if (data.id) {
+          window.currentRecordId = data.id;
+          // sessionStorage에도 저장
+          sessionStorage.setItem('currentAccidentId', data.id);
+          // 메시지 생성 버튼 활성화
+          const messageButton = document.querySelector('.btn-kakao-vendor');
+          if (messageButton) {
+            messageButton.disabled = false;
+          }
+        }
+        
+        // 삭제 버튼 표시
+        const deleteBtn = document.getElementById("deleteBtn");
+        if (deleteBtn) {
+          deleteBtn.style.display = "block";
+        }
+        
+        // 수정 모드 플래그 설정
+        window.__ACCIDENT_EDIT_MODE__ = true;
+        
+        // 저장 버튼 텍스트 변경
+        const saveBtn = document.querySelector('.btn-save');
+        if (saveBtn) {
+          saveBtn.textContent = '📝 접수 수정';
+        }
+        
+        const caseNo = data.case_no || data.receipt_number;
+        const statusMsg = document.getElementById("statusMsg");
+        if (statusMsg) {
+          statusMsg.innerText = "📝 편집 모드: 접수번호 " + caseNo;
+          statusMsg.style.color = "#2563eb";
+        }
+        
+        console.log('수정 모드로 전환됨');
+        return; // receipt_number 처리 완료, 기존 로직 스킵
+      } else {
+        console.warn("레코드를 찾을 수 없습니다:", receiptNumber);
+      }
+    } catch (e) {
+      console.error("데이터 로드 오류:", e);
+      alert("데이터 로드 중 오류가 발생했습니다: " + (e.message || "알 수 없는 오류"));
+    }
+  }
+
+  // 편집 모드일 경우 데이터 로드 (편집 모드에서는 localStorage 무시)
+  // receipt_number가 이미 처리되었으면 스킵
+  if (editReceiptNumber && !receiptNumber) {
+    if (!window.supabaseClient) {
+      console.error("Supabase client not available");
+      alert("데이터베이스 연결에 실패했습니다. 페이지를 새로고침해주세요.");
+      return;
+    }
+
+    try {
+      const record = await window.loadAccidentByReceiptNumber(editReceiptNumber);
+      
+      if (!record) {
+        console.warn("레코드를 찾을 수 없습니다:", editReceiptNumber);
+        return;
+      }
+
+      if (record) {
+        console.log("Loading record:", record);
+        
+        // 레코드 ID 저장 (삭제 기능용 및 메시지 생성용)
+        window.currentRecordId = record.id;
+        // sessionStorage에도 저장
+        sessionStorage.setItem('currentAccidentId', record.id);
+        // 메시지 생성 버튼 활성화
+        const messageButton = document.querySelector('.btn-kakao-vendor');
+        if (messageButton) {
+          messageButton.disabled = false;
+        }
+        
+        // 삭제 버튼 표시
+        const deleteBtn = document.getElementById("deleteBtn");
+        if (deleteBtn) {
+          deleteBtn.style.display = "block";
+        }
+        
+        // 폼 필드 채우기 - fillAccidentForm 함수 사용
+        fillAccidentForm(record);
+        
+        // 수정 모드 플래그 설정
+        window.__ACCIDENT_EDIT_MODE__ = true;
+        
+        // 저장 버튼 텍스트 변경
+        const saveBtn = document.querySelector('.btn-save');
+        if (saveBtn) {
+          saveBtn.textContent = '📝 접수 수정';
+        }
+        
+        const caseNo = record.case_no || record.receipt_number;
+        const statusMsg = document.getElementById("statusMsg");
+        if (statusMsg) {
+          statusMsg.innerText = "📝 편집 모드: 접수번호 " + caseNo;
+          statusMsg.style.color = "#2563eb";
+        }
+        
+        console.log('수정 모드로 전환됨');
+      }
+    } catch (e) {
+      console.error("데이터 로드 오류:", e);
+      console.error("Error details:", JSON.stringify(e, null, 2));
+      alert("데이터 로드 중 오류가 발생했습니다: " + (e.message || "알 수 없는 오류"));
+    }
+  } else if (!editReceiptNumber && !receiptNumber) {
+    // 편집 모드가 아닐 때만 localStorage에서 폼 데이터 로드
+    // (편집 모드에서는 DB 데이터가 우선)
+    const loaded = loadFormFromLocalStorage();
+    if (loaded) {
+      console.log("Form data restored from localStorage");
+    }
+    
+    // 새 레코드 생성 모드이므로 삭제 버튼 숨김
+    const deleteBtn = document.getElementById("deleteBtn");
+    if (deleteBtn) {
+      deleteBtn.style.display = "none";
+    }
+    window.currentRecordId = null;
+    // sessionStorage에서도 제거
+    sessionStorage.removeItem('currentAccidentId');
+    // 메시지 생성 버튼 비활성화
+    const messageButton = document.querySelector('.btn-kakao-vendor');
+    if (messageButton) {
+      messageButton.disabled = true;
+    }
+    
+    // 담당자 필드 자동 입력 (편집 모드가 아닐 때만)
+    await loadManagerName();
+    // 신규 접수 모드에서는 상태 필드 숨김
+    const statusFieldContainer = document.getElementById("statusFieldContainer");
+    if (statusFieldContainer) {
+      statusFieldContainer.style.display = "none";
+    }
+    // 신규 접수는 기본 상태로 설정
+    currentStatus = "접수완료";
+  }
+  
+  // 상태 변경 이벤트 리스너 설정
+  const statusSelect = document.getElementById("accidentStatus");
+  if (statusSelect) {
+    statusSelect.addEventListener("change", handleStatusChange);
+    // 초기 상태 옵션 업데이트
+    if (currentStatus) {
+      updateStatusOptions(currentStatus);
+    }
+  }
+  
+  // localStorage에서 선택된 시공점 정보 로드
+  loadSelectedWorkshop();
+  
+  // 자동 저장 이벤트 리스너 설정
+  setupFormAutoSave();
+});
+
+// 로그인한 사용자의 이름을 담당자 필드에 자동 입력
+async function loadManagerName() {
+  if (!window.supabaseClient) {
+    console.error('Supabase client not ready');
+    alert('시스템 초기화 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  try {
+
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+    
+    if (userError) {
+      console.warn("사용자 정보 조회 오류:", userError);
+      return;
+    }
+
+    if (!user) {
+      console.warn("로그인한 사용자가 없습니다.");
+      return;
+    }
+
+    // public.users 테이블에서 사용자 이름 조회
+    const { data, error } = await window.supabaseClient
+      .from('users')
+      .select('id, name')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.warn("사용자 이름 조회 오류:", error);
+      return;
+    }
+
+    if (data?.name) {
+      const managerField = document.getElementById("manager");
+      if (managerField) {
+        managerField.value = data.name;
+        // 내부 변수로 manager_id 저장
+        managerId = data.id;
+        console.log("담당자 자동 입력 완료:", data.name, "manager_id:", managerId);
+      }
+    } else {
+      console.warn('담당자 이름이 등록되지 않은 사용자입니다');
+    }
+  } catch (error) {
+    console.warn("담당자 자동 입력 중 오류:", error);
+  }
+}
+
+// 상태 순서 정의
+const STATUS_ORDER = ['접수완료', '배정완료', '시공예정', '시공완료', '정산대기', '정산완료', '종료'];
+
+// 다음 상태로만 변경 가능한지 확인
+function canChangeToStatus(currentStatus, newStatus) {
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  const newIndex = STATUS_ORDER.indexOf(newStatus);
+  
+  // 현재 상태나 새 상태가 목록에 없으면 false
+  if (currentIndex === -1 || newIndex === -1) {
+    return false;
+  }
+  
+  // 다음 상태로만 변경 가능 (같은 상태는 허용하지 않음)
+  return newIndex === currentIndex + 1;
+}
+
+// 상태 변경 가능한 옵션만 표시
+function updateStatusOptions(currentStatus) {
+  const statusSelect = document.getElementById("accidentStatus");
+  if (!statusSelect) return;
+  
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  if (currentIndex === -1) {
+    // 현재 상태가 목록에 없으면 모든 옵션 표시
+    return;
+  }
+  
+  // 현재 상태와 다음 상태만 선택 가능하도록
+  const options = statusSelect.options;
+  for (let i = 0; i < options.length; i++) {
+    const optionStatus = options[i].value;
+    const optionIndex = STATUS_ORDER.indexOf(optionStatus);
+    
+    // 현재 상태 이전의 상태는 비활성화
+    if (optionIndex < currentIndex) {
+      options[i].disabled = true;
+    } else if (optionIndex === currentIndex || optionIndex === currentIndex + 1) {
+      // 현재 상태와 다음 상태만 활성화
+      options[i].disabled = false;
+    } else {
+      // 그 이후 상태는 비활성화
+      options[i].disabled = true;
+    }
+  }
+}
+
+// 상태별 뱃지 클래스 반환 (statusConfig.js 사용)
+function getStatusBadgeClass(status) {
+  if (window.getStatusClass) {
+    return window.getStatusClass(status);
+  }
+  // Fallback (statusConfig.js가 로드되지 않은 경우)
+  const statusMap = {
+    '접수완료': 'status-received',
+    '배정완료': 'status-assigned',
+    '시공예정': 'status-scheduled',
+    '시공완료': 'status-completed',
+    '정산대기': 'status-pending',
+    '정산완료': 'status-settled',
+    '종료': 'status-closed'
+  };
+  return statusMap[status] || 'status-received';
+}
+
+// 상태 뱃지 업데이트 (statusConfig.js 사용)
+function updateStatusBadge(status) {
+  const badgeEl = document.getElementById("statusBadge");
+  if (!badgeEl) return;
+  
+  // statusConfig.js의 renderStatusBadge 사용
+  if (window.renderStatusBadge) {
+    const normalizedStatus = window.normalizeStatus ? window.normalizeStatus(status) : (status || '접수완료');
+    badgeEl.innerHTML = window.renderStatusBadge(normalizedStatus, false);
+  } else {
+    // Fallback
+    const badgeClass = getStatusBadgeClass(status);
+    const badgeText = status || '접수완료';
+    badgeEl.innerHTML = `<span class="status-badge ${badgeClass}">${badgeText}</span>`;
+  }
+}
+
+// 상태 변경 처리 함수
+async function handleStatusChange() {
+  if (!window.supabaseClient) {
+    console.error('Supabase client not ready');
+    alert('시스템 초기화 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  const newStatus = document.getElementById("accidentStatus").value;
+  
+  // 상태가 실제로 변경되지 않았으면 아무 작업도 하지 않음
+  if (currentStatus === newStatus) {
+    return;
+  }
+  
+  // 상태 변경 순서 검증
+  if (!canChangeToStatus(currentStatus, newStatus)) {
+    alert(`상태는 순서대로만 변경할 수 있습니다.\n현재 상태: ${currentStatus}\n다음 상태: ${STATUS_ORDER[STATUS_ORDER.indexOf(currentStatus) + 1] || '없음'}`);
+    // 상태를 원래대로 되돌림
+    document.getElementById("accidentStatus").value = currentStatus;
+    return;
+  }
+  
+  const oldStatus = currentStatus;
+  const caseNo = document.getElementById("receiptNumber").value.trim();
+  
+  if (!caseNo) {
+    console.warn("접수번호가 없어 상태 변경 로그를 저장할 수 없습니다.");
+    currentStatus = newStatus;
+    return;
+  }
+  
+  try {
+    await waitForSupabase();
+    
+    // 현재 로그인한 사용자 정보 가져오기
+    const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+    if (userError || !user) {
+      console.warn("로그인한 사용자가 없습니다.");
+      return;
+    }
+    
+    // status_priority 계산 (statusConfig.js의 ACCIDENT_STATUS_PRIORITY 사용)
+    const statusPriority = (window.ACCIDENT_STATUS_PRIORITY && window.ACCIDENT_STATUS_PRIORITY[newStatus]) || 5;
+    
+    // accident_records.status UPDATE (status_priority도 함께 업데이트)
+    const { error: updateError } = await window.supabaseClient
+      .from('accident_records')
+      .update({ 
+        status: newStatus,
+        status_priority: statusPriority
+      })
+      .eq('case_no', caseNo);
+    
+    if (updateError) {
+      console.error("상태 업데이트 오류:", updateError);
+      // 상태를 원래대로 되돌림
+      document.getElementById("accidentStatus").value = oldStatus;
+      alert("상태 변경 실패: " + updateError.message);
+      return;
+    }
+    
+    // accident_status_logs 테이블에 변경 로그 INSERT
+    const { error: logError } = await window.supabaseClient
+      .from('accident_status_logs')
+      .insert({
+        case_no: caseNo,
+        before_status: oldStatus,
+        after_status: newStatus,
+        changed_by: user.id
+      });
+    
+    if (logError) {
+      console.warn("상태 변경 이력 로그 저장 실패:", logError);
+      // 상태 업데이트는 성공했으므로 경고만 출력
+    } else {
+      console.log("상태 변경 완료:", oldStatus, "→", newStatus);
+    }
+    
+    // 현재 상태 업데이트
+    currentStatus = newStatus;
+    
+    // 상태 뱃지 업데이트
+    updateStatusBadge(newStatus);
+    
+    // 상태 옵션 업데이트
+    updateStatusOptions(newStatus);
+    
+    // 상태 변경 이력 다시 로드
+    loadStatusHistory(caseNo);
+    
+  } catch (error) {
+    console.error("상태 변경 중 오류:", error);
+    // 상태를 원래대로 되돌림
+    document.getElementById("accidentStatus").value = oldStatus;
+    alert("상태 변경 중 오류가 발생했습니다: " + (error.message || "알 수 없는 오류"));
+  }
+}
+
+// 상태 변경 이력 로드
+async function loadStatusHistory(caseNo) {
+  if (!caseNo || !window.supabaseClient) return;
+  
+  try {
+    // 먼저 로그 조회
+    const { data: logs, error } = await window.supabaseClient
+      .from('accident_status_logs')
+      .select('*')
+      .eq('case_no', caseNo)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.warn("상태 변경 이력 로드 실패:", error);
+      return;
+    }
+    
+    if (!logs || logs.length === 0) {
+      renderStatusHistory([]);
+      return;
+    }
+    
+    // 사용자 이름 조회
+    const userIds = [...new Set(logs.map(log => log.changed_by).filter(Boolean))];
+    const userMap = {};
+    
+    if (userIds.length > 0) {
+      const { data: users, error: userError } = await window.supabaseClient
+        .from('users')
+        .select('id, name')
+        .in('id', userIds);
+      
+      if (!userError && users) {
+        users.forEach(user => {
+          userMap[user.id] = user.name || '알 수 없음';
+        });
+      }
+    }
+    
+    // 로그에 사용자 이름 추가
+    const logsWithUsers = logs.map(log => ({
+      ...log,
+      changed_by_user: {
+        name: userMap[log.changed_by] || '알 수 없음'
+      }
+    }));
+    
+    renderStatusHistory(logsWithUsers);
+  } catch (error) {
+    console.error("상태 변경 이력 로드 중 오류:", error);
+  }
+}
+
+// 상태 변경 이력 렌더링
+function renderStatusHistory(logs) {
+  const historyContainer = document.getElementById("statusHistoryContainer");
+  if (!historyContainer) return;
+  
+  if (!logs || logs.length === 0) {
+    historyContainer.innerHTML = '<p style="color: #9ca3af; font-size: 14px;">상태 변경 이력이 없습니다.</p>';
+    return;
+  }
+  
+  const historyHtml = logs.map(log => {
+    const date = new Date(log.created_at);
+    const dateStr = date.toLocaleString('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const userName = log.changed_by_user?.name || '알 수 없음';
+    const beforeStatus = log.before_status || '(없음)';
+    const afterStatus = log.after_status || '(없음)';
+    
+    return `
+      <div style="padding: 8px 0; border-bottom: 1px solid #e5e7eb;">
+        <div style="font-size: 13px; color: #6b7280;">
+          ${dateStr} | ${beforeStatus} → ${afterStatus} | ${userName}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  historyContainer.innerHTML = historyHtml;
+}
+
+// localStorage에서 선택된 시공점 정보 로드
+function loadSelectedWorkshop() {
+  try {
+    const selectedWorkshop = localStorage.getItem('selectedWorkshop');
+    if (selectedWorkshop) {
+      const workshop = JSON.parse(selectedWorkshop);
+      if (workshop) {
+        document.getElementById("assignedWorkshopName").value = workshop.name || '';
+        document.getElementById("assignedWorkshopAddress").value = workshop.address || '';
+        document.getElementById("assignedWorkshopPhone").value = workshop.phone || '';
+        
+        // 사고위치가 비어있으면 시공점 주소로 자동 입력
+        const accidentLocation = document.getElementById("accidentLocation");
+        if (!accidentLocation.value.trim() && workshop.address) {
+          accidentLocation.value = workshop.address;
+        }
+        
+        // localStorage에서 선택된 시공점 정보 삭제
+        localStorage.removeItem('selectedWorkshop');
+        
+        // 시공점 정보가 업데이트되었으므로 폼 데이터 저장
+        saveFormToLocalStorage();
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load selected workshop:", e);
+  }
+}
+
+// 접수 삭제 함수 (상세/편집 페이지에서)
+async function deleteCurrentRecord() {
+  if (!window.supabaseClient) {
+    console.error('Supabase client not ready');
+    alert('시스템 초기화 중입니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  
+  if (!window.currentRecordId) {
+    alert("삭제할 레코드 ID를 찾을 수 없습니다.");
+    return;
+  }
+  
+  if (!window.confirm("정말 삭제하시겠습니까? (삭제 후 복구 가능)")) {
+    return;
+  }
+  
+  try {
+    await waitForSupabase();
+    
+    if (!window.deleteAccidentRecord) {
+      throw new Error("삭제 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    await window.deleteAccidentRecord(window.currentRecordId);
+    
+    alert("삭제되었습니다.");
+    
+    // localStorage에서도 폼 데이터 삭제
+    clearFormFromLocalStorage();
+    
+    // 접수 현황 페이지로 이동
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'openAccidentDetail', receiptNumber: '', useId: false }, '*');
+      // 접수 현황 페이지로 이동
+      setTimeout(() => {
+        window.parent.postMessage({ type: 'navigate', page: 'status' }, '*');
+      }, 100);
+    } else {
+      window.location.href = '/pages/status/index.html';
+    }
+    
+  } catch (error) {
+    console.error("삭제 오류:", error);
+    alert("삭제 중 오류 발생: " + (error.message || "알 수 없는 오류"));
+  }
+}
+
+// 시공점 찾기 버튼 클릭 시 (자동 입력 버튼 옆)
+function openWorkshopMap() {
+  const accidentLocation = document.getElementById("accidentLocation").value.trim();
+  
+  // 사고위치가 없으면 alert 후 중단
+  if (!accidentLocation) {
+    alert("사고위치를 먼저 입력해주세요.");
+    document.getElementById("accidentLocation").focus();
+    return;
+  }
+  
+  // accident_address를 localStorage에 백업으로 저장
+  localStorage.setItem("accident_address", accidentLocation);
+  
+  // encodeURIComponent로 인코딩하여 이동
+  const encodedAddress = encodeURIComponent(accidentLocation);
+  
+  // 부모 프레임이 있으면 메시지 전송, 없으면 직접 이동
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage({ type: 'openInstallerMap', address: accidentLocation }, '*');
+  } else {
+    window.location.href = '/pages/installer/embed.html?address=' + encodedAddress;
+  }
+}
+
+/**
+ * 키워드 기반 파싱 함수
+ * "키워드:" 뒤의 값을 추출
+ */
+function parseKeywordBased(text) {
+  if (!text || typeof text !== 'string') {
+    return {};
+  }
+
+  const result = {};
+  
+  // 정규화: 줄바꿈 정리
+  const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  
+  // 각 필드별 키워드 패턴 정의
+  const patterns = {
+    carNumber: [
+      /차량번호\s*[:：]\s*([0-9가-힣\-]+)/i,
+      /차량\s*번호\s*[:：]\s*([0-9가-힣\-]+)/i,
+      /차번\s*[:：]\s*([0-9가-힣\-]+)/i
+    ],
+    phone: [
+      /연락처\s*[:：]\s*([^\n]+)/i,
+      /연락처\s*[-=]\s*([^\n]+)/i,
+      /연락처\s+([^\n]+)/i,
+      /사고\s*연락처\s*[:：]\s*([^\n]+)/i
+    ],
+    vin: [
+      /차대번호\s*[:：]\s*([A-Z0-9\s-]{10,20})/i,
+      /차대번호\s*[-=]\s*([A-Z0-9\s-]{10,20})/i,
+      /차대번호\s+([A-Z0-9\s-]{10,20})/i,
+      /VIN\s*[:：]\s*([A-Z0-9\s-]{10,20})/i,
+      /VIN\s*[-=]\s*([A-Z0-9\s-]{10,20})/i,
+      /VIN\s+([A-Z0-9\s-]{10,20})/i,
+      // VIN 17자리 패턴 (공백/하이픈 제거 후 검증)
+      /(?:차대번호|VIN)\s*[:：-]?\s*([A-Z0-9]{17})/i
+    ],
+    receiptNumber: [
+      /접수번호\s*[:：]\s*([^\n]+)/i,
+      /접수번호\s*[-=]\s*([^\n]+)/i,
+      /접수번호\s+([^\n]+)/i,
+      /사고접수번호\s*[:：]\s*([^\n]+)/i
+    ],
+    damageType: [
+      /수리부위\s*[:：]\s*([^\n]+)/i,
+      /수리부위\s*[-=]\s*([^\n]+)/i,
+      /수리부위\s+([^\n]+)/i,
+      /파손부위\s*[:：]\s*([^\n]+)/i,
+      /파손부위\s*[-=]\s*([^\n]+)/i,
+      /파손부위\s+([^\n]+)/i,
+      /파손유형\s*[:：]\s*([^\n]+)/i,
+      /파손유형\s*[-=]\s*([^\n]+)/i,
+      /파손유형\s+([^\n]+)/i
+    ],
+    accidentLocation: [
+      /수리요청지\s*[:：]\s*([^\n]+)/i,
+      /수리요청지\s*[-=]\s*([^\n]+)/i,
+      /수리요청지\s+([^\n]+)/i,
+      /요청지\s*[:：]\s*([^\n]+)/i,
+      /요청지\s*[-=]\s*([^\n]+)/i,
+      /요청지\s+([^\n]+)/i,
+      /수리\s*장소\s*[:：]\s*([^\n]+)/i,
+      /수리\s*장소\s*[-=]\s*([^\n]+)/i,
+      /수리\s*장소\s+([^\n]+)/i,
+      /사고\s*장소\s*[:：]\s*([^\n]+)/i,
+      /사고위치\s*[:：]\s*([^\n]+)/i,
+      /주소\s*[:：]\s*([^\n]+)/i
+    ],
+    insurer: [
+      // 보험사 키워드 패턴
+      /보험사\s*[:：]\s*([^\n]+)/i,
+      /보험사\s*[-=]\s*([^\n]+)/i,
+      /보험사\s+([^\n]+)/i,
+      /보험사명\s*[:：]\s*([^\n]+)/i,
+      /캐피탈\s*[:：]\s*([^\n]+)/i,
+      // 보험사명 직접 매칭 (차량번호와 혼동 방지)
+      // 보험사명이 키워드 없이 직접 나타나는 경우
+      /(?:^|\n)\s*(현대캐피탈|삼성화재|DB손보|KB손보|한화손보|롯데손보|MG손보|동부화재|AXA손보|흥국화재|메리츠화재|교보손보|NH손보|하나손보|신한손보|카카오페이손보|라이나생명|교보생명|삼성생명|한화생명|동부생명|푸르덴셜생명|미래에셋생명|교보AXA생명|신한생명|하나생명|NH생명|KB생명|DB생명|현대생명|삼성화재해상보험|현대해상|동부화재해상보험|롯데손해보험|한화손해보험|MG손해보험|AXA손해보험|흥국화재해상보험|메리츠화재해상보험|교보손해보험|NH손해보험|하나손해보험|신한손해보험|카카오페이손해보험)(?:\s*[:：]|\s|$)/i
+    ],
+    memo: [
+      /요청사항\s*[:：]\s*([^\n]+(?:\n(?!\s*[가-힣]+\s*[:：])[^\n]+)*)/i,
+      /요청사항\s*[-=]\s*([^\n]+(?:\n(?!\s*[가-힣]+\s*[:：])[^\n]+)*)/i,
+      /메모\s*[:：]\s*([^\n]+(?:\n(?!\s*[가-힣]+\s*[:：])[^\n]+)*)/i,
+      /사고\s*내용\s*[:：]\s*([^\n]+(?:\n(?!\s*[가-힣]+\s*[:：])[^\n]+)*)/i
+    ],
+    carModel: [
+      /차명\s*[:：]\s*([^\n]+)/i
+    ],
+    deductible: [
+      /면책금\s*[:：]\s*([0-9]+만원)/i,
+      /면책금\s*[:：]\s*(\d{1,3},?\d{0,3}원)/i,
+      /면책금\s+([0-9]+만원)/i
+    ],
+    deductiblePayType: [
+      /선납/i,
+      /후납/i
+    ]
+  };
+  
+  // 각 필드에 대해 패턴 매칭
+  for (const [field, fieldPatterns] of Object.entries(patterns)) {
+    // 차량번호 필드 디버깅용
+    if (field === 'carNumber') {
+      console.log('=== 차량번호 파싱 시작 ===');
+      console.log('원본 텍스트:', text);
+      console.log('정규화된 텍스트:', normalizedText);
+      console.log('차량번호 패턴 개수:', fieldPatterns.length);
+    }
+    
+    for (let patternIndex = 0; patternIndex < fieldPatterns.length; patternIndex++) {
+      const pattern = fieldPatterns[patternIndex];
+      const match = normalizedText.match(pattern);
+      
+      // 차량번호 필드 디버깅용
+      if (field === 'carNumber') {
+        console.log(`패턴 ${patternIndex + 1}:`, pattern);
+        console.log('매칭 결과:', match);
+      }
+      
+      if (match) {
+        let value = '';
+        
+        // 보험사명 직접 매칭 패턴 처리 (match[1]이 보험사명)
+        if (field === 'insurer' && match[1] && /^(현대캐피탈|삼성화재|DB손보|KB손보|한화손보|롯데손보|MG손보|동부화재|AXA손보|흥국화재|메리츠화재|교보손보|NH손보|하나손보|신한손보|카카오페이손보|라이나생명|교보생명|삼성생명|한화생명|동부생명|푸르덴셜생명|미래에셋생명|교보AXA생명|신한생명|하나생명|NH생명|KB생명|DB생명|현대생명|삼성화재해상보험|현대해상|동부화재해상보험|롯데손해보험|한화손해보험|MG손해보험|AXA손해보험|흥국화재해상보험|메리츠화재해상보험|교보손해보험|NH손해보험|하나손해보험|신한손해보험|카카오페이손해보험)/i.test(match[1])) {
+          // 보험사명이 직접 매칭된 경우 (보험사명 자체를 값으로 사용)
+          value = match[1].trim();
+        } else if (match[1]) {
+          // 일반 패턴 (match[1]이 값)
+          value = match[1].trim();
+        }
+        
+        // 차량번호 필드 디버깅용
+        if (field === 'carNumber') {
+          console.log('매칭된 원본 값 (match[1]):', match[1]);
+          console.log('trim 후 값:', value);
+        }
+        
+        if (!value) {
+          // 차량번호 필드 디버깅용
+          if (field === 'carNumber') {
+            console.log('❌ 값이 비어있어서 건너뜀');
+          }
+          continue;
+        }
+        
+        // ✅ 차량번호는 한글 포함 그대로 유지
+        if (field === 'carNumber') {
+          value = value.replace(/[^0-9가-힣\-]/g, "").trim();
+        } else {
+          // 불필요한 구분자 제거 (앞뒤만)
+          const beforeClean = value;
+          value = value.replace(/^[:：\s\-=]+|[:：\s\-=]+$/g, '');
+          
+          // 차량번호 필드 디버깅용
+          if (field === 'carNumber') {
+            console.log('구분자 제거 전:', beforeClean);
+            console.log('구분자 제거 후:', value);
+          }
+          
+          value = value.split(/\n/)[0].trim();
+        }
+        
+        // 차량번호 필드 특별 처리
+        if (field === 'carNumber') {
+          // 줄바꿈 전까지만 추출
+          value = value.split(/\n/)[0].trim();
+          
+          // 차량번호 필드 디버깅용
+          console.log('줄바꿈 분리 후:', value);
+          
+          // 보험사명이 포함되어 있으면 제외 (먼저 체크)
+          const insurerNames = ['현대캐피탈', '삼성화재', 'DB손보', 'KB손보', '한화손보', '롯데손보', 'MG손보', '동부화재', 'AXA손보', '흥국화재', '메리츠화재', '교보손보', 'NH손보', '하나손보', '신한손보'];
+          if (insurerNames.some(name => value.includes(name))) {
+            console.log('❌ 보험사명이 포함되어 있어서 건너뜀. 값:', value);
+            continue; // 이 매칭은 건너뛰기
+          }
+          
+          // 다음 필드 키워드가 포함되어 있으면 그 전까지만 추출 (줄바꿈 없이 같은 줄에 있는 경우)
+          // 주의: "차명" 키워드는 차량번호 값(예: "203호8203")에 포함될 수 없으므로, 
+          // "차명 :" 또는 "차명:" 형식일 때만 다음 필드로 인식하여 제거
+          const nextFieldKeywords = ['차대번호', 'VIN', '연락처', '수리요청지', '수리부위', '파손부위', '파손유형', '접수번호', '보험사', '요청사항', '메모', '면책금'];
+          
+          // "차명"은 별도 처리: "차명 :" 또는 "차명:" 형식일 때만 제거
+          // "203호8203" 같은 차량번호에는 "차명"이 포함되지 않으므로 안전
+          if (value.includes('차명')) {
+            const 차명Index = value.indexOf('차명');
+            // "차명 :" 또는 "차명:" 형식인지 확인 (공백 + 콜론 또는 바로 콜론)
+            const after차명 = value.substring(차명Index + 2);
+            if (after차명.match(/^\s*[:：]/)) {
+              console.log(`⚠️ "차명 :" 형식 발견 (위치: ${차명Index}), 그 전까지만 추출`);
+              value = value.substring(0, 차명Index).trim();
+            } else {
+              // "차명"이 값에 포함되어 있지만 다음 필드가 아닌 경우 (예: "203호차명8203" 같은 잘못된 경우)
+              // 이 경우는 무시하고 계속 진행
+              console.log(`⚠️ "차명" 발견했지만 다음 필드 형식이 아니므로 무시 (위치: ${차명Index})`);
+            }
+          }
+          
+          // 다른 키워드 처리
+          for (const keyword of nextFieldKeywords) {
+            const keywordIndex = value.indexOf(keyword);
+            if (keywordIndex !== -1) {
+              console.log(`⚠️ 다음 키워드 "${keyword}" 발견 (위치: ${keywordIndex}), 그 전까지만 추출`);
+              value = value.substring(0, keywordIndex).trim();
+              break;
+            }
+          }
+          
+          // 빈값이면 건너뛰기
+          if (!value || value.length === 0) {
+            console.log('❌ 키워드 제거 후 값이 비어있어서 건너뜀');
+            continue;
+          }
+          
+          console.log('✅ 차량번호 최종 값:', value);
+        } else {
+          // 다른 필드는 줄바꿈까지만
+          value = value.split(/\n/)[0].trim();
+        }
+        
+        // VIN 필드 특별 처리: 공백/하이픈 제거 후 17자리 검증
+        if (field === 'vin') {
+          const cleanedVin = value.replace(/[\s\-]/g, '');
+          if (cleanedVin.length >= 10 && cleanedVin.length <= 20) {
+            value = cleanedVin;
+          }
+        }
+        
+        if (value && value.length > 0) {
+          result[field] = value;
+          
+          // 차량번호 필드 디버깅용
+          if (field === 'carNumber') {
+            console.log('✅ 차량번호 result에 저장됨:', result[field]);
+            console.log('=== 차량번호 파싱 완료 ===');
+          }
+          
+          break; // 첫 번째 매칭만 사용
+        } else {
+          // 차량번호 필드 디버깅용
+          if (field === 'carNumber') {
+            console.log('❌ 최종 값이 비어있어서 result에 저장하지 않음');
+          }
+        }
+      } else {
+        // 차량번호 필드 디버깅용
+        if (field === 'carNumber') {
+          console.log(`패턴 ${patternIndex + 1} 매칭 실패`);
+        }
+      }
+    }
+    
+    // 차량번호 필드 디버깅용 - 모든 패턴 시도 후 결과 확인
+    if (field === 'carNumber') {
+      console.log('최종 result.carNumber:', result.carNumber || '(없음)');
+      if (!result.carNumber) {
+        console.log('❌ 차량번호 매칭 실패 이유 분석:');
+        console.log('1. 패턴이 텍스트와 일치하지 않음');
+        console.log('2. 매칭은 되었지만 후처리 과정에서 값이 제거됨');
+        console.log('3. 보험사명 필터링에 의해 제외됨');
+        console.log('4. 다음 키워드 필터링에 의해 값이 모두 제거됨');
+        // 실제 텍스트에서 "차량번호" 키워드 검색
+        const carNumberKeywordIndex = normalizedText.indexOf('차량번호');
+        if (carNumberKeywordIndex !== -1) {
+          const context = normalizedText.substring(Math.max(0, carNumberKeywordIndex - 10), Math.min(normalizedText.length, carNumberKeywordIndex + 50));
+          console.log('텍스트에서 "차량번호" 발견 위치:', carNumberKeywordIndex);
+          console.log('주변 텍스트:', context);
+        } else {
+          console.log('텍스트에서 "차량번호" 키워드를 찾을 수 없음');
+        }
+      }
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * 파싱된 데이터를 폼에 채우고 시각적 피드백 제공
+ */
+function fillFormWithVisualFeedback(parsedData) {
+  const fieldMapping = {
+    receiptNumber: 'receiptNumber',
+    accidentTime: 'accidentTime',
+    customerName: 'customerName',
+    phone: 'phone',
+    carNumber: 'carNumber',
+    vin: 'vin',
+    insurer: 'insurer',
+    accidentLocation: 'accidentLocation',
+    damageType: 'damageType',
+    manager: 'manager',
+    memo: 'memo',
+    carModel: 'carModel',
+    deductible: 'deductible',
+    deductiblePayType: 'deductiblePayType'
+  };
+  
+  let filledCount = 0;
+  
+  // 모든 필드 초기화
+  for (const fieldId of Object.values(fieldMapping)) {
+    const element = document.getElementById(fieldId);
+    if (element) {
+      element.classList.remove('field-auto-filled', 'field-manual');
+    }
+  }
+  
+  // 파싱된 데이터 적용 (수동 입력 값 우선)
+  const priorityFields = ['carNumber', 'insurer', 'accidentLocation', 'damageType'];
+  
+  for (const [key, fieldId] of Object.entries(fieldMapping)) {
+    const element = document.getElementById(fieldId);
+    if (element) {
+      const parsedValue = parsedData[key];
+      
+      // 우선순위 필드인 경우: 수동 입력 값이 있으면 자동 입력으로 덮어쓰지 않음
+      if (priorityFields.includes(key)) {
+        const currentValue = element.value.trim();
+        // 수동으로 입력된 값이 있으면 (field-manual 클래스가 있거나, 값이 있고 자동 입력 표시가 없는 경우)
+        const hasManualInput = element.classList.contains('field-manual');
+        
+        if (hasManualInput && currentValue) {
+          // 수동 입력 값이 있으면 자동 입력 무시
+          continue;
+        }
+        // 값이 있지만 수동 입력 표시가 없는 경우는 자동 입력으로 덮어쓸 수 있음
+      }
+      
+      // 자동 입력 값 적용
+      if (parsedValue && parsedValue.trim() !== '') {
+        element.value = parsedValue;
+        element.classList.add('field-auto-filled');
+        filledCount++;
+      }
+      // 값이 없으면 기본 흰색 유지 (노란색 제거)
+    }
+  }
+  
+  // 수동 입력 감지 (이벤트 리스너 추가)
+  for (const fieldId of Object.values(fieldMapping)) {
+    const element = document.getElementById(fieldId);
+    if (element && !element.hasAttribute('data-listener-added')) {
+      element.addEventListener('input', function() {
+        this.classList.remove('field-auto-filled');
+        this.classList.add('field-manual');
+      });
+      element.setAttribute('data-listener-added', 'true');
+    }
+  }
+  
+  return { filledCount };
+}
+
+  // 카카오톡 텍스트 붙여넣기에서 자동 입력
+function fillFromKakao() {
+  const text = document.getElementById("kakaoRaw").value;
+
+  if (!text || text.trim() === "") {
+    alert("카카오톡 메시지를 붙여넣어주세요.");
+    return;
+  }
+
+  // 키워드 기반 파싱 사용
+  const parsedData = parseKeywordBased(text);
+  
+  // 폼에 채우고 시각적 피드백 제공
+  const { filledCount } = fillFormWithVisualFeedback(parsedData);
+  
+  // 자동 입력 후 localStorage에 저장
+  saveFormToLocalStorage();
+  
+  document.getElementById("statusMsg").innerText = 
+    `✅ 자동 입력 완료 (${filledCount}개 필드 자동 입력됨)`;
+}
+
+// 저장 중 플래그 (중복 저장 방지)
+let isSaving = false;
+
+async function saveAccident() {
+  if (!window.supabaseClient) {
+    console.error('Supabase client missing');
+    alert('Supabase 초기화 실패');
+    return;
+  }
+
+  // 중복 저장 방지
+  if (isSaving) {
+    console.warn('[Accident] Save already in progress, skipping');
+    return;
+  }
+
+  // 필수 입력 항목만 검증 (접수번호, 연락처)
+  const required = [
+    "receiptNumber",
+    "phone"
+  ];
+
+  const missingFields = [];
+  const fieldNames = {
+    "receiptNumber": "접수번호",
+    "phone": "연락처"
+  };
+
+  for (let id of required) {
+    if (!document.getElementById(id).value.trim()) {
+      missingFields.push(fieldNames[id]);
+    }
+  }
+
+  if (missingFields.length > 0) {
+    document.getElementById("statusMsg").innerText =
+      `❌ 다음 필수 입력 항목이 누락되었습니다: ${missingFields.join(', ')}`;
+    document.getElementById("statusMsg").style.color = "red";
+    return;
+  }
+
+  // 상태 메시지 초기화
+  const statusMsg = document.getElementById("statusMsg");
+  statusMsg.innerText = "⏳ 저장 중...";
+  statusMsg.style.color = "#2563eb";
+
+  isSaving = true;
+
+  try {
+    // 방어 로직: API 호출 전 client 존재 여부 재확인
+    if (!window.supabaseClient) {
+      console.error("Supabase client not ready");
+      throw new Error("데이터베이스 연결이 준비되지 않았습니다. 페이지를 새로고침해주세요.");
+    }
+
+    // Wait for Supabase to be ready
+    await waitForSupabase();
+    
+    // 방어 로직: API 호출 전 client 존재 여부 최종 확인
+    if (!window.supabaseClient) {
+      console.error("Supabase client not ready");
+      throw new Error("데이터베이스 연결이 준비되지 않았습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    // Check if API functions are available
+    if (!window.API?.saveAccident && !window.saveAccidentRecord) {
+      throw new Error("Supabase API 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    // 현재 로그인한 사용자 정보 가져오기 (manager_id용)
+    // 방어 로직: API 호출 전 client 존재 여부 확인
+    if (!window.supabaseClient || !window.supabaseClient.auth) {
+      console.error("Supabase client not ready");
+      throw new Error("데이터베이스 연결이 준비되지 않았습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+    if (userError) {
+      throw new Error("사용자 인증 오류: " + userError.message);
+    }
+    if (!user) {
+      throw new Error("로그인한 사용자가 없습니다.");
+    }
+    
+    // manager_id 설정: 로그인 사용자 id를 기본값으로 사용
+    // 담당자 이름이 수정되어도 manager_id는 유지 (이미 설정된 경우)
+    if (!managerId) {
+      managerId = user.id;
+    }
+    
+    // 담당자 이름 (화면에 입력된 값)
+    const managerName = document.getElementById("manager").value.trim();
+    
+    // 상태 select 박스에서 현재 상태 값 읽기
+    const statusSelect = document.getElementById("accidentStatus");
+    const currentStatus = statusSelect ? statusSelect.value : "접수됨";
+    
+    // 완료/정산 단계 보호 (확인 다이얼로그)
+    if (['작업완료', '정산완료'].includes(currentStatus)) {
+      const ok = confirm(`${currentStatus} 상태로 저장하시겠습니까?`);
+      if (!ok) {
+        statusMsg.innerText = "저장이 취소되었습니다.";
+        statusMsg.style.color = "orange";
+        isSaving = false;
+        return;
+      }
+    }
+    
+    // 폼 데이터 수집 - 새로운 컬럼명 기준으로 매핑
+    const data = {
+      case_no: document.getElementById("receiptNumber").value.trim(),
+      incident_date: document.getElementById("accidentTime").value.trim(),
+      customer_name: document.getElementById("customerName").value.trim(),
+      phone: document.getElementById("phone").value.trim(),
+      car_no: document.getElementById("carNumber").value.trim(),
+      vin: document.getElementById("vin").value.trim(),
+      car_model: document.getElementById("carModel").value.trim(),
+      insurance: document.getElementById("insurer").value.trim(),
+      damage_type: document.getElementById("damageType").value.trim(),
+      accident_location: document.getElementById("accidentLocation").value.trim(),
+      manager: managerName,
+      memo: document.getElementById("memo").value.trim(),
+      deductible: document.getElementById("deductible").value.trim(),
+      deductible_type: document.getElementById("deductiblePayType").value.trim(),
+      assigned_workshop_name: document.getElementById("assignedWorkshopName").value.trim(),
+      assigned_workshop_address: document.getElementById("assignedWorkshopAddress").value.trim(),
+      assigned_workshop_phone: document.getElementById("assignedWorkshopPhone").value.trim(),
+      status: currentStatus || "접수완료",
+      manager_id: managerId,
+      manager_name: managerName
+    };
+    
+    // Timestamp 필드 정규화 (빈 문자열을 null로 변환)
+    if (data.incident_date === '') {
+      data.incident_date = null;
+    }
+    
+    // 기존 사고인지 확인 (담당자 변경 이력 로그용)
+    const caseNo = data.case_no;
+    let oldManagerId = null;
+    let oldStatus = null;
+    let accidentId = null;
+    
+    if (caseNo) {
+      try {
+        // 방어 로직: API 호출 전 client 존재 여부 확인
+        if (!window.supabaseClient) {
+          console.error("Supabase client not ready");
+          throw new Error("데이터베이스 연결이 준비되지 않았습니다.");
+        }
+        
+        const { data: existingRecord, error: fetchError } = await window.supabaseClient
+          .from('accident_records')
+          .select('id, manager_id, status')
+          .eq('case_no', caseNo)
+          .maybeSingle();
+        
+        if (!fetchError && existingRecord) {
+          oldManagerId = existingRecord.manager_id;
+          oldStatus = existingRecord.status || "접수됨";
+          accidentId = existingRecord.id;
+          // currentStatus는 이미 위에서 select 박스에서 읽어왔으므로 여기서는 수정하지 않음
+        }
+      } catch (fetchErr) {
+        console.warn("기존 사고 조회 오류 (변경 이력 로그용):", fetchErr);
+      }
+    }
+    
+    // 상태가 변경된 경우 상태 변경 이력 로그 저장
+    if (oldStatus !== null && oldStatus !== data.status && caseNo) {
+      try {
+        // 방어 로직: API 호출 전 client 존재 여부 확인
+        if (!window.supabaseClient) {
+          console.error("Supabase client not ready");
+          throw new Error("데이터베이스 연결이 준비되지 않았습니다.");
+        }
+        
+        await window.supabaseClient
+          .from('accident_status_logs')
+          .insert({
+            case_no: caseNo,
+            before_status: oldStatus,
+            after_status: data.status,
+            changed_by: user.id
+          });
+        console.log("상태 변경 이력 로그 저장 완료 (저장 시)");
+      } catch (statusLogError) {
+        console.warn("상태 변경 이력 로그 저장 실패 (저장 시):", statusLogError);
+      }
+    }
+
+    // 수정 모드 분기 처리
+    // 방어 로직: API 호출 전 client 존재 여부 확인
+    if (!window.supabaseClient) {
+      console.error("Supabase client not ready");
+      throw new Error("데이터베이스 연결이 준비되지 않았습니다. 페이지를 새로고침해주세요.");
+    }
+    
+    let saveResult = null;
+    let saveError = null;
+    try {
+      // 수정 모드인 경우 UPDATE, 신규 모드인 경우 INSERT/UPSERT
+      if (window.__ACCIDENT_EDIT_MODE__) {
+        // 수정 모드: updateAccidentRecord 사용
+        // caseNo는 이미 위에서 선언되었으므로 재사용
+        if (!caseNo) {
+          throw new Error("접수번호(case_no)가 없어 수정할 수 없습니다.");
+        }
+        
+        if (typeof window.updateAccidentRecord === 'function') {
+          saveResult = await window.updateAccidentRecord(caseNo, data);
+          if (!saveResult) {
+            throw new Error("수정 결과를 받지 못했습니다.");
+          }
+          console.log("✅ 수정 성공:", saveResult);
+        } else {
+          throw new Error("수정 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+        }
+      } else {
+        // 신규 모드: saveAccidentRecord 사용 (upsert - 중복 방지)
+        if (typeof window.API?.saveAccident === 'function') {
+          saveResult = await window.API.saveAccident(data);
+          if (!saveResult) {
+            throw new Error("저장 결과를 받지 못했습니다.");
+          }
+          console.log("✅ 저장 성공:", saveResult);
+        } else if (typeof window.saveAccidentRecord === 'function') {
+          saveResult = await window.saveAccidentRecord(data);
+          if (!saveResult) {
+            throw new Error("저장 결과를 받지 못했습니다.");
+          }
+          console.log("✅ 저장 성공:", saveResult);
+        } else if (typeof window.saveAccidentRecord === 'function') {
+          saveResult = await window.saveAccidentRecord(data);
+          if (!saveResult) {
+            throw new Error("저장 결과를 받지 못했습니다.");
+          }
+          console.log("✅ 저장 성공 (insert):", saveResult);
+        } else {
+          throw new Error("Supabase API 함수를 찾을 수 없습니다. 페이지를 새로고침해주세요.");
+        }
+      }
+    } catch (managerErr) {
+      saveError = managerErr;
+      // manager 관련 오류 로그 분리 출력
+      console.error("❌ 저장 오류:", managerErr);
+      if (managerErr.message && managerErr.message.includes('manager')) {
+        throw new Error("담당자 정보 저장 실패: " + managerErr.message);
+      }
+      throw managerErr;
+    }
+    
+    // 저장 성공 여부 최종 확인
+    if (saveError) {
+      throw saveError;
+    }
+    if (!saveResult) {
+      throw new Error("저장이 완료되었지만 결과를 확인할 수 없습니다.");
+    }
+    
+    // 담당자 변경 이력 로그 저장
+    if (oldManagerId !== null && oldManagerId !== managerId && accidentId) {
+      try {
+        // 방어 로직: API 호출 전 client 존재 여부 확인
+        if (!window.supabaseClient) {
+          console.error("Supabase client not ready");
+          throw new Error("데이터베이스 연결이 준비되지 않았습니다.");
+        }
+        
+        await window.supabaseClient
+          .from('accident_manager_logs')
+          .insert({
+            accident_id: accidentId,
+            before_manager_id: oldManagerId,
+            after_manager_id: managerId,
+            changed_by: user.id
+          });
+        console.log("담당자 변경 이력 로그 저장 완료");
+      } catch (logError) {
+        // 이력 로그 저장 실패는 경고만 출력 (메인 저장은 성공했으므로)
+        console.warn("담당자 변경 이력 로그 저장 실패:", logError);
+      }
+    }
+    
+    statusMsg.innerText = "✅ 접수 데이터가 저장되었습니다.";
+    statusMsg.style.color = "green";
+    
+    // 접수 저장 시 accidentId 확보 및 전역 상태로 유지
+    let savedAccidentId = null;
+    if (saveResult) {
+      // saveResult가 객체이고 id 속성이 있는 경우
+      if (saveResult.id) {
+        savedAccidentId = saveResult.id;
+      } else if (saveResult.data && saveResult.data.id) {
+        savedAccidentId = saveResult.data.id;
+      } else if (Array.isArray(saveResult) && saveResult.length > 0 && saveResult[0].id) {
+        savedAccidentId = saveResult[0].id;
+      } else if (saveResult[0] && saveResult[0].id) {
+        savedAccidentId = saveResult[0].id;
+      }
+    }
+    
+    // accidentId를 전역 상태로 유지 (sessionStorage 사용)
+    if (savedAccidentId) {
+      sessionStorage.setItem('currentAccidentId', savedAccidentId);
+      window.currentRecordId = savedAccidentId;
+      console.log('✅ accidentId 저장됨:', savedAccidentId);
+      
+      // 메시지 생성 버튼 활성화
+      const messageButton = document.querySelector('.btn-kakao-vendor');
+      if (messageButton) {
+        messageButton.disabled = false;
+      }
+    }
+    
+    // 저장 성공 후 상태가 변경되었으면 UI 반영
+    if (statusSelect && currentStatus) {
+      statusSelect.value = currentStatus;
+    }
+    
+    // 접수 현황 / 요약 갱신 (부모 창 또는 현재 창)
+    if (window.opener && typeof window.opener.loadRecords === 'function') {
+      window.opener.loadRecords();
+    } else if (typeof loadAccidentList === 'function') {
+      loadAccidentList();
+    } else if (typeof loadRecords === 'function') {
+      loadRecords();
+    }
+    
+    // 저장 성공 후 localStorage에서 폼 데이터 삭제
+    clearFormFromLocalStorage();
+  } catch (error) {
+    console.error("저장 오류:", error);
+    console.error("Error details:", JSON.stringify(error, null, 2));
+    console.error("Error stack:", error.stack);
+    
+    // More detailed error message
+    let errorMsg = error.message || "알 수 없는 오류";
+    if (error.message && error.message.includes('fetch')) {
+      errorMsg = "네트워크 오류: Supabase 서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.";
+    } else if (error.message && error.message.includes('Failed to fetch')) {
+      errorMsg = "네트워크 오류: Supabase 서버에 연결할 수 없습니다. 인터넷 연결을 확인해주세요.";
+    }
+    
+    statusMsg.innerText = "❌ 서버 저장 실패: " + errorMsg;
+    statusMsg.style.color = "red";
+    alert("저장 중 오류가 발생했습니다: " + errorMsg);
+  } finally {
+    isSaving = false;
+  }
+}
+
+// 템플릿 관리와 연동되지 않은 모든 메시지 생성 코드 제거됨
+// 메시지 생성은 /pages/message/index.html 페이지에서만 수행됨
+
+// 메시지 생성 페이지로 이동
+// 메시지 생성은 별도의 페이지로 분리
+function openMessagePage() {
+  // accidentId 확인: URL 파라미터 또는 sessionStorage에서 가져오기
+  let accidentId = window.currentRecordId || sessionStorage.getItem('currentAccidentId');
+  
+  if (!accidentId) {
+    alert('사고 ID를 찾을 수 없습니다.\n먼저 접수를 저장해주세요.');
+    return;
+  }
+
+  // 메시지 생성 페이지로 이동
+  // /pages/message/?accidentId=xxx
+  const url = '/pages/message/index.html?accidentId=' + encodeURIComponent(accidentId);
+  
+  // iframe 내부인 경우 부모 창에서 이동
+  if (window.parent && window.parent !== window) {
+    window.parent.location.href = url;
+  } else {
+    // 직접 페이지 이동
+    window.location.href = url;
+  }
+}
+</script>
+
+</body>
+</html>
+

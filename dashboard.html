@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>자동차 유리 교체 통합 대시보드</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+        font-family: Pretendard, sans-serif;
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+        background: #f3f4f6;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        width: 260px;
+        background: #111827;
+        color: white;
+        padding: 24px 16px;
+        display: flex;
+        flex-direction: column;
+        transition: 0.3s ease;
+    }
+
+    .sidebar h2 {
+        font-size: 20px;
+        margin-bottom: 32px;
+        color: #60a5fa;
+    }
+
+    #logoutBtn {
+        margin-top: auto;
+        padding: 12px 16px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s ease;
+    }
+
+    #logoutBtn:hover {
+        background: #b91c1c;
+    }
+
+    .menu-item {
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        background: #1f2937;
+        transition: 0.2s ease;
+        font-size: 15px;
+        user-select: none;
+    }
+
+    .menu-item:hover,
+    .menu-item.active {
+        background: #3b82f6;
+    }
+
+    .admin-only {
+        display: none;
+    }
+
+    /* Content Layout */
+    .content {
+        flex: 1;
+        height: 100vh;
+        overflow: hidden;
+        background: white;
+    }
+
+    iframe {
+        border: none;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        body {
+            flex-direction: column;
+        }
+
+        .sidebar {
+            width: 100%;
+            flex-direction: row;
+            overflow-x: auto;
+            height: auto;
+            padding: 12px;
+        }
+
+        .menu-item {
+            flex: 1;
+            margin-right: 8px;
+            text-align: center;
+            white-space: nowrap;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>유리 교체 대시보드</h2>
+
+    <div class="menu-item active" onclick="loadPage('accident', event)">
+        사고 접수 시스템
+    </div>
+
+    <div class="menu-item" onclick="loadPage('message', event)">
+        💬 메시지 보내기
+    </div>
+
+    <div class="menu-item" onclick="loadPage('map', event)">
+        시공점 자동 배정 지도
+    </div>
+
+    <div class="menu-item" onclick="loadPage('status', event)">
+        접수 현황
+    </div>
+
+    <div class="menu-item" onclick="loadPage('stats', event)">
+        통계 / 리포트
+    </div>
+
+    <div class="menu-item admin-only" onclick="loadPage('users', event)">
+        유저 관리
+    </div>
+
+    <button id="logoutBtn">로그아웃</button>
+</div>
+
+<div class="content">
+    <iframe id="contentFrame" src="./pages/accident/index.html"></iframe>
+</div>
+
+<script>
+async function loadPage(page, e) {
+    const frame = document.getElementById("contentFrame");
+    
+    // 권한 체크를 위해 현재 사용자 role 확인
+    const { supabase } = await import("/js/supabase.js");
+    const { data: { session } } = await supabase.auth.getSession();
+    const role = session?.user?.app_metadata?.role;
+
+    // admin만 접근 가능한 페이지
+    const adminOnlyPages = ["users"];
+    if (adminOnlyPages.includes(page) && role !== "admin") {
+        alert("관리자만 접근 가능한 페이지입니다.");
+        // 대시보드로 리다이렉트 (accident 페이지로)
+        frame.src = "./pages/accident/index.html";
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const accidentMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("사고 접수")
+        );
+        if (accidentMenu) accidentMenu.classList.add("active");
+        return;
+    }
+
+    if (page === "accident") {
+        frame.src = "./pages/accident/index.html";
+    } else if (page === "message") {
+        frame.src = "./pages/message/index.html";
+    } else if (page === "map") {
+        frame.src = "./pages/installer/embed.html";
+    } else if (page === "templates") {
+        frame.src = "./pages/templates/index.html";
+    } else if (page === "status") {
+        frame.src = "./pages/status/index.html";
+    } else if (page === "stats") {
+        frame.src = "./pages/stats/index.html";
+    } else if (page === "users") {
+        frame.src = "./users.html";
+    }
+
+    document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+    if (e && e.target) {
+        e.target.classList.add("active");
+    }
+    
+    // 페이지 변경 시 iframe 로드 처리
+    frame.addEventListener('load', () => {
+        // iframe 로드 완료
+    }, { once: true });
+}
+
+// iframe에서 메시지 수신 처리
+window.addEventListener('message', function(event) {
+    const frame = document.getElementById("contentFrame");
+    
+    if (event.data.type === 'openAccidentDetail') {
+        const param = event.data.useId ? 'id' : 'edit';
+        frame.src = "./pages/accident/index.html?" + param + "=" + encodeURIComponent(event.data.receiptNumber);
+        // 메뉴 활성화
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const accidentMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("사고 접수")
+        );
+        if (accidentMenu) accidentMenu.classList.add("active");
+    } else if (event.data.type === 'openAccidentNew') {
+        frame.src = "./pages/accident/index.html";
+        // 메뉴 활성화
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const accidentMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("사고 접수")
+        );
+        if (accidentMenu) accidentMenu.classList.add("active");
+    } else if (event.data.type === 'openInstallerMap') {
+        const addressParam = event.data.address ? `?address=${encodeURIComponent(event.data.address)}` : '';
+        frame.src = "./pages/installer/embed.html" + addressParam;
+        // 메뉴 활성화
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const installerMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("시공점")
+        );
+        if (installerMenu) installerMenu.classList.add("active");
+    } else if (event.data.type === 'openAccidentPage') {
+        frame.src = "./pages/accident/index.html";
+        // 메뉴 활성화
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const accidentMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("사고 접수")
+        );
+        if (accidentMenu) accidentMenu.classList.add("active");
+    } else if (event.data.type === 'openMessagePage') {
+        const recordId = event.data.recordId;
+        const caseNo = event.data.caseNo;
+        const params = new URLSearchParams();
+        if (recordId) params.set('accidentId', recordId);
+        if (caseNo) params.set('caseNo', caseNo);
+        frame.src = "./pages/message/index.html?" + params.toString();
+        // 메뉴 활성화
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const messageMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("메시지 보내기")
+        );
+        if (messageMenu) messageMenu.classList.add("active");
+    }
+    
+    // URL 기반 라우팅 지원 (/accident-form, /workshop-map)
+    if (window.location.pathname.includes('/accident-form') || window.location.pathname.endsWith('/accident/index.html')) {
+        frame.src = "./pages/accident/index.html";
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const accidentMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("사고 접수")
+        );
+        if (accidentMenu) accidentMenu.classList.add("active");
+    } else if (window.location.pathname.includes('/workshop-map')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const address = urlParams.get('address');
+        frame.src = "./pages/installer/embed.html" + (address ? "?address=" + encodeURIComponent(address) : "");
+        document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
+        const installerMenu = Array.from(document.querySelectorAll(".menu-item")).find(item => 
+            item.textContent.includes("시공점")
+        );
+        if (installerMenu) installerMenu.classList.add("active");
+    }
+});
+</script>
+
+<script type="module">
+import { logout } from "/js/auth.js";
+import { supabase } from "/js/supabase.js";
+
+// ✅ 전역 변수 (세션 및 사용자 정보)
+let currentUser = null;
+let currentSession = null;
+
+async function initDashboard() {
+  // 🔽 여기서부터 안전하게 로직 실행 (세션 보장됨)
+  const role = currentSession?.user?.app_metadata?.role;
+  console.log("USER ROLE:", role);
+
+  if (role === "admin") {
+    document
+      .querySelectorAll(".admin-only")
+      .forEach(el => el.style.display = "block");
+  } else {
+    document
+      .querySelectorAll(".admin-only")
+      .forEach(el => el.style.display = "none");
+  }
+}
+
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data, error } = await supabase.auth.getSession();
+
+  if (error || !data.session) {
+    window.location.href = '/login.html';
+    return;
+  }
+
+  currentSession = data.session;
+  currentUser = data.session.user;
+
+  // 🔽 여기서부터 안전하게 로직 실행
+  initDashboard();
+  
+  // 로그아웃 버튼 이벤트 리스너 등록
+  document
+    .getElementById("logoutBtn")
+    ?.addEventListener("click", logout);
+  
+  // iframe 로드 완료 처리
+  const frame = document.getElementById("contentFrame");
+  frame.addEventListener('load', () => {
+    // iframe 로드 완료
+  });
+});
+</script>
+
+</body>
+</html>
+

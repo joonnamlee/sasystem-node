@@ -1,0 +1,10 @@
+[build]
+  publish = "."
+  command = ""
+
+[dev]
+  framework = "#static"
+  targetPort = 8888
+  port = 8888
+  autoLaunch = true
+

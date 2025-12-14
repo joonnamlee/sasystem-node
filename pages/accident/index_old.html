@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>SA System 사고 접수</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Kakao SDK -->
+  <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.5.0/kakao.min.js"
+          crossorigin="anonymous"></script>
+
+  <!-- Supabase Bootstrap -->
+  <script type="module" src="/js/accidentBootstrap.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; }
+    header { background:#111; color:#fff; padding:14px 20px; font-size:18px; font-weight:bold; }
+    .container { max-width:1200px; margin:20px auto; background:#fff; padding:24px; border-radius:10px; }
+    .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; }
+    .form-field { display:flex; flex-direction:column; gap:6px; }
+    input, textarea, select { padding:10px; border-radius:6px; border:1px solid #ccc; font-size:13px; }
+    textarea { height:160px; resize:none; }
+    .button-group { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+    button { padding:12px; border-radius:8px; border:none; cursor:pointer; font-weight:600; }
+    .btn-save { background:#2563eb; color:#fff; }
+    .btn-vendor { background:#10b981; color:#fff; }
+    .btn-installer { background:#f59e0b; color:#fff; }
+    .status { margin-top:12px; font-weight:bold; }
+    .readonly { background:#f3f4f6; cursor:not-allowed; }
+    .status-badge { padding:6px 12px; border-radius:6px; font-weight:600; }
+  </style>
+</head>
+
+<body>
+
+<header>🚗 에스에이시스템 사고 접수 시스템</header>
+
+<div class="container">
+
+  <h2 id="pageTitle">신규 사고 접수</h2>
+
+  <textarea id="kakaoRaw" placeholder="카카오톡 사고 접수 내용을 붙여넣으세요"></textarea>
+  <button onclick="fillFromKakao()">자동 입력</button>
+
+  <div id="statusSection" style="display:none; margin-top:20px;">
+    <span id="currentStatusBadge" class="status-badge">-</span>
+    <select id="statusSelect">
+      <option value="RECEIVED">접수됨</option>
+      <option value="ASSIGNED">배정됨</option>
+      <option value="IN_PROGRESS">진행중</option>
+      <option value="COMPLETED">완료</option>
+      <option value="SETTLED">정산완료</option>
+    </select>
+    <button onclick="updateStatus()">상태 저장</button>
+  </div>
+
+  <div class="form-grid">
+    <div class="form-field"><label>접수번호</label><input id="receiptNumber"></div>
+    <div class="form-field"><label>사고일시</label><input id="accidentTime"></div>
+    <div class="form-field"><label>고객명</label><input id="customerName"></div>
+    <div class="form-field"><label>연락처</label><input id="phone"></div>
+    <div class="form-field"><label>차량번호</label><input id="carNumber"></div>
+    <div class="form-field"><label>VIN</label><input id="vin"></div>
+    <div class="form-field"><label>차명</label><input id="carModel"></div>
+    <div class="form-field"><label>면책금</label><input id="deductible"></div>
+    <div class="form-field"><label>면책금 방식</label><input id="deductiblePayType"></div>
+    <div class="form-field"><label>보험사</label><input id="insurer"></div>
+    <div class="form-field"><label>파손유형</label><input id="damageType"></div>
+    <div class="form-field">
+      <label>담당자</label>
+      <input id="manager" class="readonly" readonly>
+      <input type="hidden" id="managerId">
+    </div>
+    <div class="form-field"><label>사고위치</label><input id="accidentLocation"></div>
+    <div class="form-field"><label>비고</label><input id="memo"></div>
+  </div>
+
+  <div class="button-group">
+    <button class="btn-save" onclick="saveAccident()">접수 저장</button>
+    <button class="btn-vendor" onclick="sendKakaoToVendor()">발주처 카톡</button>
+    <button class="btn-installer" onclick="sendKakaoToInstaller()">시공점 카톡</button>
+  </div>
+
+  <div id="statusMsg" class="status"></div>
+</div>
+
+<script>
+/* =========================
+   전역 상태
+========================= */
+let currentMode = "new";
+let sessionUser = null;
+
+/* =========================
+   Supabase 대기
+========================= */
+function waitForSupabase() {
+  return new Promise(resolve => {
+    if (window.supabaseClient) return resolve();
+    window.addEventListener("supabaseReady", resolve, { once:true });
+  });
+}
+
+/* =========================
+   초기화
+========================= */
+document.addEventListener("DOMContentLoaded", async () => {
+  await waitForSupabase();
+  initMode();
+});
+
+/* =========================
+   신규 / 상세 분기
+========================= */
+async function initMode() {
+  const params = new URLSearchParams(location.search);
+  const receipt = params.get("receipt_number");
+
+  if (!receipt) return;
+
+  currentMode = "existing";
+  document.getElementById("pageTitle").innerText = "사고 접수 상세";
+  document.getElementById("receiptNumber").disabled = true;
+  document.getElementById("receiptNumber").classList.add("readonly");
+  document.getElementById("statusSection").style.display = "block";
+
+  const { data } = await window.supabaseClient
+    .from("accident_records")
+    .select("*")
+    .or(`case_no.eq.${receipt},receipt_number.eq.${receipt}`)
+    .maybeSingle();
+
+  if (!data) return;
+
+  fillForm(data);
+  loadStatus(data.case_no);
+}
+
+/* =========================
+   폼 채우기
+========================= */
+function fillForm(d) {
+  receiptNumber.value = d.case_no;
+  accidentTime.value = d.incident_date || "";
+  customerName.value = d.customer_name || "";
+  phone.value = d.phone || "";
+  carNumber.value = d.car_number || "";
+  vin.value = d.vin || "";
+  carModel.value = d.car_model || "";
+  deductible.value = d.deductible || "";
+  deductiblePayType.value = d.deductible_type || "";
+  insurer.value = d.insurer || "";
+  damageType.value = d.damage_type || "";
+  accidentLocation.value = d.accident_location || "";
+  memo.value = d.memo || "";
+}
+
+/* =========================
+   저장
+========================= */
+async function saveAccident() {
+  await waitForSupabase();
+
+  const caseNo = receiptNumber.value.trim();
+  if (!caseNo) return alert("접수번호 필수");
+
+  const payload = {
+    case_no: caseNo,
+    incident_date: accidentTime.value,
+    customer_name: customerName.value,
+    phone: phone.value,
+    car_number: carNumber.value,
+    vin: vin.value,
+    car_model: carModel.value,
+    deductible: deductible.value,
+    deductible_type: deductiblePayType.value,
+    insurer: insurer.value,
+    damage_type: damageType.value,
+    accident_location: accidentLocation.value,
+    memo: memo.value,
+    status: "RECEIVED"
+  };
+
+  // manager_id는 sessionUser.id 사용 (postMessage로 받은 값)
+  if (sessionUser?.id) {
+    payload.manager_id = sessionUser.id;
+  }
+
+  if (currentMode === "new") {
+    await window.supabaseClient.from("accident_records").insert(payload);
+    statusMsg.innerText = "✅ 신규 접수 완료";
+  } else {
+    await window.supabaseClient.from("accident_records")
+      .update(payload).eq("case_no", caseNo);
+    statusMsg.innerText = "✅ 수정 완료";
+  }
+}
+
+/* =========================
+   상태
+========================= */
+async function loadStatus(caseNo) {
+  const { data } = await window.supabaseClient
+    .from("accident_records").select("status")
+    .eq("case_no", caseNo).single();
+  currentStatusBadge.innerText = data.status;
+  statusSelect.value = data.status;
+}
+
+async function updateStatus() {
+  const caseNo = receiptNumber.value;
+  const newStatus = statusSelect.value;
+  await window.supabaseClient
+    .from("accident_records")
+    .update({ status:newStatus })
+    .eq("case_no", caseNo);
+  loadStatus(caseNo);
+}
+
+/* =========================
+   카카오
+========================= */
+function sendKakaoToVendor() { alert("발주처 카톡"); }
+function sendKakaoToInstaller() { alert("시공점 카톡"); }
+function fillFromKakao() { alert("파싱 로직 연결 가능"); }
+</script>
+
+</body>
+</html>
