@@ -5,6 +5,9 @@
   <title>SA System 사고 접수</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
+  <!-- 공통 레이아웃 CSS -->
+  <link rel="stylesheet" href="/css/layout.css">
+  
   <!-- 카카오 SDK -->
   <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.5.0/kakao.min.js"></script>
   
@@ -326,18 +329,141 @@
       background: #4b5563;
       color: white;
     }
+
+    /* Mobile Styles */
+    @media (max-width: 768px) {
+      body {
+        padding-bottom: 56px;
+      }
+
+      /* 브랜드 배너 숨기기 */
+      header {
+        display: none;
+      }
+
+      /* 컨테이너 조정 */
+      .container {
+        margin: 0;
+        padding: 12px;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      /* 제목 스타일 조정 */
+      h2 {
+        font-size: 18px;
+        margin-top: 0;
+        margin-bottom: 12px;
+      }
+
+      /* 카카오톡 입력 영역 */
+      #kakaoRaw {
+        height: 120px;
+        padding: 10px;
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      /* 버튼 정렬 - 2분할 */
+      .button-row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .button-row button {
+        flex: 1;
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+
+      /* 섹션 간격 감소 */
+      h2[style*="margin-top:30px"] {
+        margin-top: 20px !important;
+      }
+
+      /* 폼 그리드 조정 */
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      /* 입력 필드 높이 축소 */
+      .form-grid input,
+      .form-grid select {
+        padding: 8px 10px;
+        font-size: 14px;
+        height: 40px;
+      }
+
+      .form-grid label {
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      /* 버튼 그룹 조정 */
+      .button-group {
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .button-group button {
+        padding: 12px 16px;
+        font-size: 14px;
+      }
+
+      /* 상태 메시지 */
+      .status {
+        margin-top: 8px;
+        font-size: 13px;
+      }
+
+      /* 불필요한 구분선 제거 */
+      hr {
+        margin: 16px 0;
+      }
+    }
   </style>
 </head>
 
 <body>
+  <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('사고 접수 시스템');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
 
-<header>🚗 에스에이시스템 사고 접수 시스템</header>
+<header style="display: none;">🚗 에스에이시스템 사고 접수 시스템</header>
 
 <div class="container">
 
   <h2>카카오톡 사고 접수 내용 입력</h2>
   <textarea id="kakaoRaw" placeholder="카카오톡 메시지를 복사하여 그대로 붙여넣으세요"></textarea>
-  <div style="display: flex; gap: 8px; margin-top: 8px;">
+  <div class="button-row">
     <button onclick="fillFromKakao()" style="padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; background: #10b981; color: white; transition: all 0.2s;">자동 입력</button>
     <button onclick="openWorkshopMap()" style="padding: 10px 20px; font-size: 14px; font-weight: 500; border: none; border-radius: 8px; cursor: pointer; background: #2563eb; color: white; transition: all 0.2s;">시공점 찾기</button>
   </div>

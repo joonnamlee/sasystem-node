@@ -4,6 +4,22 @@
 <meta charset="UTF-8" />
 <title>자동차 유리 교체 통합 대시보드</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+  // 모바일 감지 및 리다이렉트
+  (function() {
+    const isMobile = window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const currentPath = window.location.pathname;
+    
+    // 모바일이고 아직 mobile 경로가 아닌 경우
+    if (isMobile && !currentPath.startsWith('/mobile/') && currentPath !== '/mobile/index.html') {
+      // dashboard.html에서 접근한 경우
+      if (currentPath === '/dashboard.html' || currentPath === '/' || currentPath.endsWith('/dashboard.html')) {
+        window.location.href = '/mobile/index.html';
+        return;
+      }
+    }
+  })();
+</script>
 
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,19 +107,38 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 56px;
+        height: 44px;
         background: white;
         border-bottom: 1px solid #e1e8ed;
-        z-index: 1000;
+        z-index: 3000;
         align-items: center;
-        padding: 0 16px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 0 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        pointer-events: auto;
+    }
+    
+    /* PC 화면에서 모바일 요소 완전 숨김 */
+    @media (min-width: 1024px) {
+        .m-header,
+        .m-slide-menu-overlay,
+        .m-slide-menu,
+        .m-bottom-nav,
+        .app-header,
+        .hamburger-btn,
+        .drawer,
+        .drawer-overlay {
+            display: none !important;
+            visibility: hidden !important;
+        }
     }
 
     .m-header-left {
         display: flex;
         align-items: center;
         gap: 12px;
+        pointer-events: auto;
+        position: relative;
+        z-index: 3001;
     }
 
     .m-header-back {
@@ -120,8 +155,140 @@
         justify-content: center;
     }
 
-    .m-header-title {
+    .m-hamburger {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #1a202c;
+        padding: 0;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        z-index: 3002;
+        position: relative;
+        pointer-events: auto !important;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+    
+    .m-hamburger:active {
+        opacity: 0.7;
+        background: rgba(0,0,0,0.05);
+        border-radius: 4px;
+    }
+
+    /* Mobile Slide Menu */
+    .m-slide-menu {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 280px;
+        height: 100vh;
+        background: white;
+        box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+        z-index: 2999;
+        transition: left 0.3s ease;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        pointer-events: auto;
+    }
+
+    .m-slide-menu.active {
+        left: 0;
+    }
+
+    .m-slide-menu-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1999;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+    }
+
+    .m-slide-menu-overlay.active {
+        display: block;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .m-slide-menu-header {
+        padding: 16px;
+        border-bottom: 1px solid #e1e8ed;
+        background: #111827;
+        color: white;
+    }
+
+    .m-slide-menu-header h2 {
         font-size: 18px;
+        margin: 0;
+        color: #60a5fa;
+    }
+
+    .m-slide-menu-content {
+        flex: 1;
+        padding: 8px 0;
+        overflow-y: auto;
+    }
+
+    .m-slide-menu-item {
+        padding: 14px 16px;
+        cursor: pointer;
+        color: #1a202c;
+        font-size: 15px;
+        transition: background 0.2s;
+        border-bottom: 1px solid #f3f4f6;
+        pointer-events: auto;
+        -webkit-tap-highlight-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .m-slide-menu-item:hover,
+    .m-slide-menu-item.active {
+        background: #3b82f6;
+        color: white;
+    }
+
+    .m-slide-menu-item.admin-only {
+        display: none;
+    }
+
+    .m-slide-menu-footer {
+        padding: 16px;
+        border-top: 1px solid #e1e8ed;
+        background: #f9fafb;
+    }
+
+    .m-slide-menu-footer button {
+        width: 100%;
+        padding: 12px 16px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .m-slide-menu-footer button:hover {
+        background: #b91c1c;
+    }
+
+    .m-header-title {
+        font-size: 16px;
         font-weight: 600;
         color: #1a202c;
     }
@@ -130,6 +297,9 @@
         margin-left: auto;
         display: flex;
         align-items: center;
+        pointer-events: auto;
+        position: relative;
+        z-index: 3001;
     }
 
     .m-user-icon {
@@ -145,83 +315,11 @@
         font-weight: 600;
     }
 
-    /* Mobile Bottom Navigation */
-    .m-bottom-nav {
-        display: none;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 56px;
-        background: white;
-        border-top: 1px solid #e1e8ed;
-        z-index: 1000;
-        display: none;
-        align-items: center;
-        justify-content: space-around;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-    }
-
-    .m-nav-item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 8px 4px;
-        cursor: pointer;
-        color: #6b7280;
-        transition: color 0.2s;
-        text-decoration: none;
-        min-width: 0;
-    }
-
-    .m-nav-item.active {
-        color: #3b82f6;
-    }
-
-    .m-nav-label {
-        font-size: 13px;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        text-align: center;
-    }
-
-    .m-more-menu {
-        position: fixed;
-        bottom: 72px;
-        right: 16px;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        padding: 8px 0;
-        min-width: 160px;
-        display: none;
-        z-index: 1001;
-    }
-
-    .m-more-menu.active {
-        display: block;
-    }
-
-    .m-more-item {
-        padding: 12px 16px;
-        cursor: pointer;
-        color: #1a202c;
-        font-size: 14px;
-        transition: background 0.2s;
-    }
-
-    .m-more-item:hover {
-        background: #f3f4f6;
-    }
 
     /* Mobile Responsive */
     @media (max-width: 768px) {
         body {
-            padding-bottom: 56px;
+            padding-bottom: 0;
         }
 
         .sidebar {
@@ -230,19 +328,98 @@
 
         .content {
             width: 100%;
-            padding-top: 56px;
+            padding-top: 44px;
         }
 
         iframe {
-            height: calc(100vh - 112px);
+            height: calc(100vh - 44px - 60px);
+            padding-bottom: 60px;
+            pointer-events: auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* iframe이 헤더를 덮지 않도록 */
+        .content {
+            position: relative;
+            z-index: 1;
         }
 
         .m-header {
             display: flex;
         }
 
+        .m-header-back {
+            display: none;
+        }
+
+        .m-hamburger {
+            display: flex;
+        }
+
+        /* 하단 탭 네비게이션 */
         .m-bottom-nav {
             display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: white;
+            border-top: 1px solid #e1e8ed;
+            z-index: 3000;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            pointer-events: auto;
+        }
+
+        .m-bottom-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 4px;
+            cursor: pointer;
+            color: #6b7280;
+            font-size: 11px;
+            transition: all 0.2s;
+            min-height: 44px;
+            min-width: 44px;
+            -webkit-tap-highlight-color: transparent;
+            pointer-events: auto !important;
+            touch-action: manipulation;
+            position: relative;
+            z-index: 3001;
+        }
+
+        .m-bottom-nav-item.active {
+            color: #3b82f6;
+        }
+
+        .m-bottom-nav-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .m-bottom-nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .m-bottom-nav-item:active {
+            opacity: 0.7;
+        }
+    }
+
+    /* Desktop: 햄버거 버튼 숨기기 */
+    @media (min-width: 769px) {
+        .m-hamburger {
+            display: none;
+        }
+
+        .m-slide-menu,
+        .m-slide-menu-overlay {
+            display: none !important;
         }
     }
 </style>
@@ -253,7 +430,7 @@
 <!-- Mobile Header -->
 <div class="m-header">
     <div class="m-header-left">
-        <button class="m-header-back" onclick="goBack()">←</button>
+        <button class="m-hamburger" onclick="toggleMobileMenu()">☰</button>
         <div class="m-header-title" id="mPageTitle">접수 현황</div>
     </div>
     <div class="m-header-right">
@@ -261,32 +438,52 @@
     </div>
 </div>
 
-<!-- Mobile Bottom Navigation -->
-<div class="m-bottom-nav">
-    <div class="m-nav-item" onclick="mNavigate('status')">
-        <div class="m-nav-label">접수 현황</div>
+<!-- Mobile Slide Menu Overlay -->
+<div class="m-slide-menu-overlay" id="mSlideMenuOverlay" onclick="closeMobileMenu()"></div>
+
+<!-- Mobile Slide Menu -->
+<div class="m-slide-menu" id="mSlideMenu">
+    <div class="m-slide-menu-header">
+        <h2>유리 교체 대시보드</h2>
     </div>
-    <div class="m-nav-item" onclick="mNavigate('accident')">
-        <div class="m-nav-label">사고 접수</div>
+    <div class="m-slide-menu-content">
+        <div class="m-slide-menu-item active" data-page="status" onclick="mNavigate('status')">접수 현황</div>
+        <div class="m-slide-menu-item" data-page="accident" onclick="mNavigate('accident')">사고 접수 시스템</div>
+        <div class="m-slide-menu-item" data-page="map" onclick="mNavigate('map')">시공점 자동 배정 지도</div>
+        <div class="m-slide-menu-item" data-page="message" onclick="mNavigate('message')">메시지 보내기</div>
+        <div class="m-slide-menu-item admin-only" data-page="workshop" onclick="mNavigate('workshop')">시공점 관리</div>
+        <div class="m-slide-menu-item admin-only" data-page="vehicle" onclick="mNavigate('vehicle')">차량 관리</div>
+        <div class="m-slide-menu-item admin-only" data-page="settlement" onclick="mNavigate('settlement')">정산 관리</div>
+        <div class="m-slide-menu-item" data-page="stats" onclick="mNavigate('stats')">통계 / 리포트</div>
+        <div class="m-slide-menu-item admin-only" data-page="users" onclick="mNavigate('users')">유저 관리</div>
     </div>
-    <div class="m-nav-item" onclick="mNavigate('map')">
-        <div class="m-nav-label">시공점 지도</div>
-    </div>
-    <div class="m-nav-item" onclick="mNavigate('message')">
-        <div class="m-nav-label">메시지</div>
-    </div>
-    <div class="m-nav-item" onclick="toggleMoreMenu()">
-        <div class="m-nav-label">더보기</div>
+    <div class="m-slide-menu-footer">
+        <button id="mLogoutBtn">로그아웃</button>
     </div>
 </div>
 
-<!-- More Menu -->
-<div class="m-more-menu" id="mMoreMenu">
-    <div class="m-more-item admin-only" onclick="mNavigate('workshop'); toggleMoreMenu();">시공점 관리</div>
-    <div class="m-more-item admin-only" onclick="mNavigate('vehicle'); toggleMoreMenu();">차량 관리</div>
-    <div class="m-more-item admin-only" onclick="mNavigate('settlement'); toggleMoreMenu();">정산 관리</div>
-    <div class="m-more-item" onclick="mNavigate('stats'); toggleMoreMenu();">통계 / 리포트</div>
-    <div class="m-more-item admin-only" onclick="mNavigate('users'); toggleMoreMenu();">유저 관리</div>
+<!-- Mobile Bottom Navigation -->
+<div class="m-bottom-nav" id="mBottomNav">
+    <div class="m-bottom-nav-item active" data-page="status" data-action="navigate" data-target="status">
+        <div class="m-bottom-nav-icon">📋</div>
+        <div class="m-bottom-nav-label">접수 현황</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="accident" data-action="navigate" data-target="accident">
+        <div class="m-bottom-nav-icon">➕</div>
+        <div class="m-bottom-nav-label">사고 접수</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="map" data-action="navigate" data-target="map">
+        <div class="m-bottom-nav-icon">📍</div>
+        <div class="m-bottom-nav-label">시공점 지도</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="message" data-action="navigate" data-target="message">
+        <div class="m-bottom-nav-icon">💬</div>
+        <div class="m-bottom-nav-label">메시지</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="more" data-action="menu">
+        <div class="m-bottom-nav-icon">⋯</div>
+        <div class="m-bottom-nav-label">더보기</div>
+    </div>
 </div>
 
 <div class="sidebar">
@@ -335,7 +532,7 @@
     <iframe id="contentFrame" src="./pages/status/index.html"></iframe>
 </div>
 
-<script>
+<script defer>
 async function loadPage(page, e) {
     const frame = document.getElementById("contentFrame");
     
@@ -388,6 +585,7 @@ async function loadPage(page, e) {
     // 모바일 네비게이션 업데이트
     updateMobileNav(page);
     updateMobileHeader();
+    updateBottomNavActive(page);
     
     // 페이지 변경 시 iframe 로드 처리
     frame.addEventListener('load', () => {
@@ -470,7 +668,7 @@ window.addEventListener('message', function(event) {
 });
 </script>
 
-<script type="module">
+<script type="module" defer>
 import { logout } from "/js/auth.js";
 import { supabase } from "/js/supabase.js";
 
@@ -492,6 +690,10 @@ async function initDashboard() {
       .querySelectorAll(".admin-only")
       .forEach(el => el.style.display = "none");
   }
+  
+  // 모바일 메뉴 초기 활성화 상태 설정
+  updateMobileMenuActive('status');
+  updateBottomNavActive('status');
 }
 
 
@@ -514,6 +716,98 @@ document.addEventListener('DOMContentLoaded', async () => {
     .getElementById("logoutBtn")
     ?.addEventListener("click", logout);
   
+  // 모바일 로그아웃 버튼 이벤트 리스너 등록
+  document
+    .getElementById("mLogoutBtn")
+    ?.addEventListener("click", logout);
+  
+  // 햄버거 버튼 이벤트 리스너 추가 (강화된 버전)
+  const hamburgerBtn = document.querySelector('.m-hamburger');
+  if (hamburgerBtn) {
+    console.log('[Mobile Menu] Hamburger button found, adding event listener');
+    
+    // 기존 onclick 제거하고 addEventListener로 통일
+    hamburgerBtn.removeAttribute('onclick');
+    
+    // 여러 이벤트 타입으로 바인딩 (터치/클릭 모두 대응)
+    ['click', 'touchend'].forEach(eventType => {
+      hamburgerBtn.addEventListener(eventType, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('[Mobile Menu] Hamburger button ' + eventType + ' event triggered');
+        toggleMobileMenu();
+        return false;
+      }, { passive: false });
+    });
+    
+    // 터치 시작 시 피드백
+    hamburgerBtn.addEventListener('touchstart', (e) => {
+      hamburgerBtn.style.opacity = '0.7';
+    }, { passive: true });
+    
+    hamburgerBtn.addEventListener('touchend', (e) => {
+      setTimeout(() => {
+        hamburgerBtn.style.opacity = '1';
+      }, 100);
+    }, { passive: true });
+  } else {
+    console.error('[Mobile Menu] Hamburger button not found');
+  }
+  
+  // 오버레이 클릭 시 메뉴 닫기
+  const overlay = document.getElementById('mSlideMenuOverlay');
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      // 오버레이 자체를 클릭한 경우에만 닫기 (메뉴 내부 클릭은 제외)
+      if (e.target === overlay) {
+        console.log('[Mobile Menu] Overlay clicked, closing menu');
+        closeMobileMenu();
+      }
+    });
+  }
+  
+  // 메뉴 항목 클릭 시 자동 닫기
+  const menuItems = document.querySelectorAll('.m-slide-menu-item');
+  menuItems.forEach(item => {
+    item.addEventListener('click', () => {
+      console.log('[Mobile Menu] Menu item clicked, closing menu');
+      closeMobileMenu();
+    });
+  });
+  
+  // 하단 탭 네비게이션 이벤트 리스너 추가
+  const bottomNavItems = document.querySelectorAll('.m-bottom-nav-item');
+  bottomNavItems.forEach(item => {
+    ['click', 'touchend'].forEach(eventType => {
+      item.addEventListener(eventType, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const page = item.dataset.page;
+        const action = item.dataset.action;
+        
+        console.log('[Mobile Nav] Bottom nav item clicked:', page, action);
+        
+        if (action === 'menu') {
+          toggleMobileMenu();
+        } else if (action === 'navigate') {
+          mNavigateTab(page);
+        }
+        return false;
+      }, { passive: false });
+    });
+    
+    // 터치 피드백
+    item.addEventListener('touchstart', () => {
+      item.style.opacity = '0.7';
+    }, { passive: true });
+    
+    item.addEventListener('touchend', () => {
+      setTimeout(() => {
+        item.style.opacity = '1';
+      }, 100);
+    }, { passive: true });
+  });
+  
   // iframe 로드 완료 처리
   const frame = document.getElementById("contentFrame");
   frame.addEventListener('load', () => {
@@ -527,32 +821,106 @@ document.addEventListener('DOMContentLoaded', async () => {
     const name = currentUser.email || currentUser.user_metadata?.name || 'U';
     userIcon.textContent = name.charAt(0).toUpperCase();
   }
+  
+  // DOM 요소 존재 확인
+  console.log('[Mobile Menu] DOM check:');
+  console.log('  - Hamburger button:', !!hamburgerBtn);
+  console.log('  - Menu:', !!document.getElementById('mSlideMenu'));
+  console.log('  - Overlay:', !!overlay);
 });
 
-// 모바일 네비게이션
+// 모바일 네비게이션 (햄버거 메뉴)
 function mNavigate(page) {
   loadPage(page, null);
-  updateMobileNav(page);
+  updateMobileMenuActive(page);
   updateMobileHeader();
-  toggleMoreMenu(false);
+  updateBottomNavActive(page);
+  closeMobileMenu();
 }
 
-// 모바일 네비게이션 활성화 업데이트
-function updateMobileNav(activePage) {
-  const navItems = document.querySelectorAll('.m-bottom-nav .m-nav-item');
-  navItems.forEach(item => item.classList.remove('active'));
+// 모바일 하단 탭 네비게이션
+function mNavigateTab(page) {
+  console.log('[Mobile Nav] Tab clicked:', page);
   
-  const pageMap = {
-    'status': 0,
-    'accident': 1,
-    'map': 2,
-    'message': 3
-  };
+  if (page === 'more') {
+    toggleMobileMenu();
+    return;
+  }
+  loadPage(page, null);
+  updateBottomNavActive(page);
+  updateMobileHeader();
+}
+
+// 전역 함수로 노출
+window.mNavigateTab = mNavigateTab;
+window.toggleMobileMenu = toggleMobileMenu;
+window.closeMobileMenu = closeMobileMenu;
+
+// 하단 탭 활성화 업데이트
+function updateBottomNavActive(activePage) {
+  const navItems = document.querySelectorAll('.m-bottom-nav-item');
+  navItems.forEach(item => {
+    item.classList.remove('active');
+    if (item.dataset.page === activePage) {
+      item.classList.add('active');
+    }
+  });
+}
+
+// 모바일 메뉴 활성화 업데이트
+function updateMobileMenuActive(activePage) {
+  const menuItems = document.querySelectorAll('.m-slide-menu-item');
+  menuItems.forEach(item => {
+    item.classList.remove('active');
+    // data-page 속성과 일치하는 항목만 활성화
+    if (item.dataset.page === activePage) {
+      item.classList.add('active');
+    }
+  });
+}
+
+// 모바일 메뉴 토글 (전역 함수로 노출)
+function toggleMobileMenu() {
+  console.log('[Mobile Menu] toggleMobileMenu called');
+  const menu = document.getElementById('mSlideMenu');
+  const overlay = document.getElementById('mSlideMenuOverlay');
   
-  if (pageMap[activePage] !== undefined) {
-    navItems[pageMap[activePage]]?.classList.add('active');
+  console.log('[Mobile Menu] menu:', menu, 'overlay:', overlay);
+  
+  if (menu && overlay) {
+    const isActive = menu.classList.contains('active');
+    console.log('[Mobile Menu] current state:', isActive ? 'open' : 'closed');
+    
+    if (isActive) {
+      menu.classList.remove('active');
+      overlay.classList.remove('active');
+      console.log('[Mobile Menu] menu closed');
+    } else {
+      menu.classList.add('active');
+      overlay.classList.add('active');
+      console.log('[Mobile Menu] menu opened');
+    }
+  } else {
+    console.error('[Mobile Menu] menu or overlay not found');
   }
 }
+
+// 모바일 메뉴 닫기 (전역 함수로 노출)
+function closeMobileMenu() {
+  console.log('[Mobile Menu] closeMobileMenu called');
+  const menu = document.getElementById('mSlideMenu');
+  const overlay = document.getElementById('mSlideMenuOverlay');
+  
+  if (menu && overlay) {
+    menu.classList.remove('active');
+    overlay.classList.remove('active');
+    console.log('[Mobile Menu] menu closed');
+  }
+}
+
+// 전역 스코프에 함수 노출 (모듈 스크립트에서도 접근 가능하도록)
+window.toggleMobileMenu = toggleMobileMenu;
+window.closeMobileMenu = closeMobileMenu;
 
 // 모바일 헤더 제목 업데이트
 function updateMobileHeader() {
@@ -580,30 +948,6 @@ function updateMobileHeader() {
   }
 }
 
-// 더보기 메뉴 토글
-function toggleMoreMenu(show) {
-  const menu = document.getElementById('mMoreMenu');
-  if (show === undefined) {
-    menu.classList.toggle('active');
-  } else {
-    menu.classList.toggle('active', show);
-  }
-}
-
-// 뒤로가기
-function goBack() {
-  window.history.back();
-}
-
-// 클릭 외부 영역에서 더보기 메뉴 닫기
-document.addEventListener('click', (e) => {
-  const moreMenu = document.getElementById('mMoreMenu');
-  const moreNavItem = document.querySelector('.m-nav-item:last-child');
-  
-  if (moreMenu && moreNavItem && !moreMenu.contains(e.target) && !moreNavItem.contains(e.target)) {
-    moreMenu.classList.remove('active');
-  }
-});
 </script>
 
 </body>

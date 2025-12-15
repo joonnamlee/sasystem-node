@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>메시지</title>
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/mobile/css/mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseclient.js"></script>
+</head>
+<body>
+  <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('메시지');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
+
+  <!-- 컨텐츠 -->
+  <div class="m-content" style="padding-top: 48px;">
+    <div class="m-container">
+      <div class="m-empty-state">
+        <div class="m-empty-state-icon">💬</div>
+        <div class="m-empty-state-text">메시지 기능은 준비 중입니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 탭 네비게이션 -->
+  <div class="m-bottom-nav">
+    <div class="m-bottom-nav-item" data-page="status">
+      <div class="m-bottom-nav-icon">📋</div>
+      <div class="m-bottom-nav-label">접수현황</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="receive">
+      <div class="m-bottom-nav-icon">➕</div>
+      <div class="m-bottom-nav-label">접수</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="map">
+      <div class="m-bottom-nav-icon">📍</div>
+      <div class="m-bottom-nav-label">지도</div>
+    </div>
+    <div class="m-bottom-nav-item active" data-page="message">
+      <div class="m-bottom-nav-icon">💬</div>
+      <div class="m-bottom-nav-label">메시지</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="more">
+      <div class="m-bottom-nav-icon">⋯</div>
+      <div class="m-bottom-nav-label">더보기</div>
+    </div>
+  </div>
+
+</body>
+</html>
+

@@ -132,11 +132,23 @@
         }
 
         .remember-wrap input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
+            width: 20px;
+            height: 20px;
+            min-width: 20px;
+            min-height: 20px;
             margin: 0;
             cursor: pointer;
             accent-color: #667eea;
+            flex-shrink: 0;
+        }
+        
+        .remember-wrap label {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            padding: 8px 0;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
         }
 
         .remember-wrap small {
@@ -192,11 +204,11 @@
             </div>
 
             <div class="remember-wrap">
-                <label>
-                    <input type="checkbox" id="rememberMe" />
-                    비밀번호 저장
+                <label for="rememberLogin">
+                    <input type="checkbox" id="rememberLogin" checked />
+                    로그인 상태 유지
                 </label>
-                <small>브라우저에 로그인 정보를 저장합니다 (공용 PC에서는 권장하지 않음)</small>
+                <small>공용 기기에서는 사용을 권장하지 않습니다</small>
             </div>
 
             <button type="submit" id="submitButton" class="submit-button">

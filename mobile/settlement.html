@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>정산 관리</title>
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/mobile/css/mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseclient.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('정산 관리');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
+
+  <!-- 컨텐츠 -->
+  <div class="m-content" style="padding-top: 48px;">
+    <div class="m-container">
+      <!-- 필터 -->
+      <div class="m-filter-bar">
+        <select class="m-filter-select" id="monthFilter">
+          <option value="">월 선택</option>
+        </select>
+        <select class="m-filter-select" id="workshopFilter">
+          <option value="">시공점 전체</option>
+        </select>
+        <select class="m-filter-select" id="statusFilter">
+          <option value="">전체</option>
+          <option value="미정산">미정산</option>
+          <option value="정산완료">정산완료</option>
+        </select>
+      </div>
+
+      <!-- 정산 카드 리스트 -->
+      <div id="settlementList">
+        <div class="m-loading">로딩 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 고정 버튼 -->
+  <div style="position: fixed; bottom: 60px; left: 0; right: 0; padding: 12px 16px; background: white; border-top: 1px solid var(--border); z-index: 999;">
+    <button class="m-btn m-btn-primary" onclick="settleSelected()" style="margin-bottom: 8px;">선택 건 정산 완료</button>
+    <button class="m-btn m-btn-secondary" onclick="downloadExcel()">엑셀 다운로드</button>
+  </div>
+
+  <!-- 하단 탭 네비게이션 -->
+  <div class="m-bottom-nav">
+    <div class="m-bottom-nav-item" data-page="status">
+      <div class="m-bottom-nav-icon">📋</div>
+      <div class="m-bottom-nav-label">접수현황</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="receive">
+      <div class="m-bottom-nav-icon">➕</div>
+      <div class="m-bottom-nav-label">접수</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="map">
+      <div class="m-bottom-nav-icon">📍</div>
+      <div class="m-bottom-nav-label">지도</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="message">
+      <div class="m-bottom-nav-icon">💬</div>
+      <div class="m-bottom-nav-label">메시지</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="more">
+      <div class="m-bottom-nav-icon">⋯</div>
+      <div class="m-bottom-nav-label">더보기</div>
+    </div>
+  </div>
+
+  <script src="/mobile/js/settlement.js"></script>
+</body>
+</html>
+

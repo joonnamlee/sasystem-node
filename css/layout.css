@@ -1,0 +1,239 @@
+/* 공통 레이아웃 CSS - 카카오/토스 스타일 */
+
+/* 헤더 */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid #eee;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.hamburger-btn {
+  font-size: 22px;
+  background: none;
+  border: none;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #222;
+  padding: 0;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  transition: all 0.15s;
+}
+
+.hamburger-btn:active {
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+.app-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #222;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+}
+
+.profile-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #3B6EF6;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  transition: all 0.15s;
+}
+
+.profile-circle:active {
+  opacity: 0.8;
+  transform: scale(0.95);
+}
+
+/* Drawer */
+.drawer {
+  position: fixed;
+  top: 0;
+  left: -85%;
+  width: 85%;
+  max-width: 320px;
+  height: 100vh;
+  height: 100dvh;
+  background: #fff;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  z-index: 950;
+  transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.drawer.open {
+  left: 0;
+}
+
+.drawer-header {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #eee;
+  background: #222;
+  color: white;
+  flex-shrink: 0;
+}
+
+.drawer-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #3B6EF6;
+  margin: 0;
+}
+
+.drawer-section-title {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  background: #f5f6f8;
+  margin: 0;
+  border-bottom: 1px solid #eee;
+}
+
+.drawer-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-menu li {
+  padding: 18px 20px;
+  font-size: 16px;
+  color: #222;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+}
+
+.drawer-menu li:active {
+  background: #f5f6f8;
+}
+
+.drawer-menu li.admin-only {
+  display: none;
+}
+
+.drawer-menu li.admin-only.show {
+  display: flex;
+}
+
+.drawer-logout {
+  margin: auto 16px 20px;
+  height: 48px;
+  min-height: 48px;
+  border-radius: 10px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  transition: all 0.15s;
+}
+
+.drawer-logout:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* Drawer Overlay */
+.drawer-overlay {
+  display: none;
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 900;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.drawer-overlay.show {
+  display: block;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* PC에서는 모바일 메뉴 완전 비활성 */
+@media (min-width: 1024px) {
+  /* 모바일 헤더 숨김 */
+  .app-header {
+    display: none !important;
+  }
+
+  /* 햄버거 버튼 숨김 */
+  .hamburger-btn {
+    display: none !important;
+  }
+
+  /* Drawer 메뉴 숨김 */
+  .drawer,
+  .drawer-overlay {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* 모바일 하단 네비게이션 숨김 */
+  .m-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* 모바일 전용 스타일 */
+@media (max-width: 768px) {
+  .app-header {
+    height: 48px;
+    padding: 0 12px;
+  }
+
+  .app-title {
+    font-size: 16px;
+  }
+
+  .hamburger-btn {
+    font-size: 24px;
+  }
+}
+

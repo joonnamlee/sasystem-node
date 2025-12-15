@@ -5,6 +5,9 @@
   <title>시공점 관리</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
+  <!-- 공통 레이아웃 CSS -->
+  <link rel="stylesheet" href="/css/layout.css">
+  
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -418,14 +421,9 @@
         border-radius: 0;
       }
 
+      /* PC용 헤더 숨기기 */
       .header {
-        flex-direction: column;
-        align-items: flex-start;
-        margin-bottom: 16px;
-      }
-
-      .header h1 {
-        font-size: 20px;
+        display: none;
       }
 
       .upload-section {
@@ -551,7 +549,36 @@
 </head>
 <body>
   <div class="container">
-    <div class="header">
+  <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('시공점 관리');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
+
+    <div class="header" style="display: none;">
       <h1>시공점 관리</h1>
       <button class="btn btn-primary" onclick="downloadExcel()">📥 엑셀 다운로드</button>
     </div>

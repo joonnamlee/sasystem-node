@@ -5,6 +5,9 @@
   <title>접수 현황</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
+  <!-- 공통 레이아웃 CSS -->
+  <link rel="stylesheet" href="/css/layout.css">
+  
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="stylesheet" as="style" crossorigin
         href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
@@ -366,52 +369,62 @@
     /* Mobile Styles */
     @media (max-width: 768px) {
       body {
-        padding-bottom: 80px;
+        padding-bottom: 0;
       }
 
       .container {
-        padding: 12px;
+        padding: 8px;
         margin: 0;
         border-radius: 0;
       }
 
+      /* PC용 헤더 숨기기 */
       .header {
-        flex-direction: column;
-        align-items: stretch;
-        margin-bottom: 16px;
-      }
-
-      .header h1 {
-        font-size: 20px;
+        display: none;
       }
 
       .btn-new {
         width: 100%;
-        padding: 14px;
-        font-size: 16px;
-        margin-bottom: 16px;
+        height: 48px;
+        padding: 0;
+        font-size: 15px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
-      /* 통계 카드 1열 리스트 */
+      /* 통계 카드 2x2 그리드 */
       .stats-cards {
-        grid-template-columns: 1fr;
-        gap: 12px;
-        margin-bottom: 16px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
       }
 
       .stat-card {
-        padding: 16px;
+        padding: 10px 12px;
+        min-height: 70px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .stat-card-label {
+        font-size: 11px;
+        margin-bottom: 4px;
       }
 
       .stat-card-value {
-        font-size: 24px;
+        font-size: 20px;
+        font-weight: 700;
       }
 
       /* 테이블을 카드 리스트로 변환 */
       .table-container {
         border: none;
         overflow: visible;
-        margin-bottom: 80px;
+        margin-bottom: 0;
+        padding-bottom: 0;
       }
 
       table {
@@ -466,28 +479,6 @@
         border-bottom: 2px solid #e1e8ed;
       }
 
-      /* 하단 고정 버튼 */
-      .m-fixed-actions {
-        position: fixed;
-        bottom: 56px;
-        left: 0;
-        right: 0;
-        background: white;
-        border-top: 1px solid #e1e8ed;
-        padding: 12px 16px;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-        z-index: 999;
-        display: flex;
-        gap: 8px;
-      }
-
-      .m-fixed-actions .btn {
-        flex: 1;
-        padding: 14px;
-        font-size: 16px;
-        font-weight: 600;
-      }
-
       th, td {
         padding: 8px 6px;
       }
@@ -519,6 +510,91 @@
 
       .filters > * {
         width: 100%;
+      }
+
+      /* 플로팅 버튼 */
+      .m-fab {
+        position: fixed;
+        bottom: 80px;
+        right: 16px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        font-size: 24px;
+        cursor: pointer;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      .m-fab:active {
+        transform: scale(0.95);
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+      }
+
+      /* 접수 카드 개선 */
+      .m-card-item {
+        min-height: 44px;
+        padding: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .m-card-item:active {
+        background: #f3f4f6;
+      }
+
+      .m-card-header {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e1e8ed;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .m-card-status {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .m-card-row {
+        padding: 8px 0;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+
+      .m-card-label {
+        font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+        min-width: 70px;
+      }
+
+      .m-card-value {
+        font-size: 14px;
+        color: #1a202c;
+        text-align: right;
+        flex: 1;
+        font-weight: 500;
+      }
+
+      /* 하단 네비게이션 공간 확보 */
+      body {
+        padding-bottom: 60px;
       }
     }
 
@@ -785,7 +861,36 @@
 <body>
 
 <div class="container">
-  <div class="header">
+    <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('접수 현황');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
+
+<div class="header" style="display: none;">
     <h1>📋 접수 현황</h1>
     <button class="btn-new" onclick="createNew()">➕ 신규 접수 만들기</button>
   </div>
@@ -903,10 +1008,9 @@
       <div style="text-align: center; padding: 40px; color: #9ca3af;">로딩 중...</div>
     </div>
   </div>
-  <!-- Mobile Fixed Action Buttons -->
-  <div class="m-fixed-actions" id="mFixedActions" style="display: none;">
-    <button class="btn-new" onclick="createNew()">➕ 신규 접수 만들기</button>
-  </div>
+  
+  <!-- Mobile Floating Action Button -->
+  <button class="m-fab" onclick="createNew()" title="신규 접수 만들기">➕</button>
 
   <div class="pagination" id="pagination"></div>
 </div>
@@ -1240,7 +1344,6 @@ function renderTable() {
         cardList.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">검색 결과가 없습니다.</div>';
       }
       renderPagination();
-      updateMobileFixedActions();
       return;
     }
 
@@ -1302,22 +1405,21 @@ function renderTable() {
                  data-record-id="${recordId}" 
                  data-status="${status}"
                  onclick="window.location.href='/pages/accident/index.html?receipt_number=' + encodeURIComponent('${caseNo}')">
-              <div class="m-card-header">${displayNo}${warningBadge}</div>
+              <div class="m-card-header">
+                <span>${displayNo}${warningBadge}</span>
+                <span class="m-card-status">${renderStatusBadge(status, true)}</span>
+              </div>
               <div class="m-card-row">
-                <span class="m-card-label">접수일시</span>
-                <span class="m-card-value">${escapeHtml(record.accidentTime || '')}</span>
+                <span class="m-card-label">고객명</span>
+                <span class="m-card-value">${escapeHtml(record.customerName || '')}</span>
               </div>
               <div class="m-card-row">
                 <span class="m-card-label">차량번호</span>
                 <span class="m-card-value">${escapeHtml(record.carNumber || '')}</span>
               </div>
               <div class="m-card-row">
-                <span class="m-card-label">차종</span>
+                <span class="m-card-label">차명</span>
                 <span class="m-card-value">${escapeHtml(record.carModel || '')}</span>
-              </div>
-              <div class="m-card-row">
-                <span class="m-card-label">현재상태</span>
-                <span class="m-card-value">${renderStatusBadge(status, true)}</span>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 12px;" onclick="event.stopPropagation()">
                 <button class="btn-message" onclick="openMessagePage('${recordId}', '${caseNo}', event)" style="flex: 1; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">💬 메시지</button>
@@ -1334,9 +1436,6 @@ function renderTable() {
     
     // 테이블 행 클릭 이벤트 리스너 등록
     setupRowClickHandlers();
-    
-    // 모바일 고정 버튼 업데이트
-    updateMobileFixedActions();
   } finally {
     isRendering = false;
   }
@@ -1383,30 +1482,6 @@ function setupRowClickHandlers() {
   });
 }
 
-// 모바일 고정 버튼 업데이트
-function updateMobileFixedActions() {
-  const isMobile = window.innerWidth <= 768;
-  if (!isMobile) return;
-  
-  const fixedActions = document.getElementById('mFixedActions');
-  if (fixedActions) {
-    fixedActions.style.display = 'flex';
-  }
-}
-
-// 윈도우 리사이즈 시 모바일 버튼 업데이트
-window.addEventListener('resize', () => {
-  updateMobileFixedActions();
-});
-
-// 페이지 로드 시 모바일 버튼 초기화
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    updateMobileFixedActions();
-  });
-} else {
-  updateMobileFixedActions();
-}
 
 // 페이지네이션 렌더링
 function renderPagination() {

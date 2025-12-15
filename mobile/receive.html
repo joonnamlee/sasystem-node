@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>사고 접수</title>
+  <link rel="stylesheet" href="/css/layout.css">
+  <link rel="stylesheet" href="/mobile/css/mobile.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/supabaseclient.js"></script>
+  <script src="/js/accidentapi.js" defer></script>
+</head>
+<body>
+  <!-- 공통 헤더 -->
+  <div id="header"></div>
+  
+  <!-- 공통 Drawer -->
+  <div id="drawer-container"></div>
+  
+  <script>
+    Promise.all([
+      fetch("/components/header.html").then(r => r.text()),
+      fetch("/components/drawer.html").then(r => r.text())
+    ]).then(([header, drawer]) => {
+      document.getElementById("header").innerHTML = header;
+      document.getElementById("drawer-container").innerHTML = drawer;
+      
+      // 레이아웃 JS 로드
+      const script = document.createElement("script");
+      script.src = "/js/layout.js";
+      script.onload = () => {
+        if (window.updatePageTitle) {
+          window.updatePageTitle('사고 접수');
+        }
+        if (window.initLayout) {
+          window.initLayout();
+        }
+      };
+      document.body.appendChild(script);
+    });
+  </script>
+
+  <!-- 컨텐츠 -->
+  <div class="m-content" style="padding-top: 48px;">
+    <div class="m-container">
+      <!-- 단계 표시 -->
+      <div class="m-steps">
+        <div class="m-step active" id="step1">
+          <div class="m-step-number">1</div>
+          <div class="m-step-label">메시지 입력</div>
+        </div>
+        <div class="m-step" id="step2">
+          <div class="m-step-number">2</div>
+          <div class="m-step-label">정보 확인</div>
+        </div>
+        <div class="m-step" id="step3">
+          <div class="m-step-number">3</div>
+          <div class="m-step-label">시공점 배정</div>
+        </div>
+        <div class="m-step" id="step4">
+          <div class="m-step-number">4</div>
+          <div class="m-step-label">완료</div>
+        </div>
+      </div>
+
+      <!-- Step 1: 카카오 메시지 입력 -->
+      <div class="m-step-content" id="stepContent1">
+        <div class="m-card">
+          <div class="m-card-title">카카오톡 사고 접수</div>
+          <textarea class="m-textarea" id="kakaoMessage" placeholder="카카오톡 메시지를 붙여넣어주세요..."></textarea>
+          <button class="m-btn m-btn-primary m-mt-16" onclick="parseKakaoMessage()">자동 입력</button>
+        </div>
+      </div>
+
+      <!-- Step 2: 정보 확인 -->
+      <div class="m-step-content m-hidden" id="stepContent2">
+        <div class="m-card">
+          <div class="m-card-title">핵심 정보</div>
+          <div class="m-card-row">
+            <span class="m-card-label">차량번호</span>
+            <span class="m-card-value" id="carNumberValue">-</span>
+          </div>
+          <div class="m-card-row">
+            <span class="m-card-label">차명</span>
+            <span class="m-card-value" id="carModelValue">-</span>
+          </div>
+          <div class="m-card-row">
+            <span class="m-card-label">파손유형</span>
+            <span class="m-card-value" id="damageTypeValue">-</span>
+          </div>
+          <div class="m-card-row">
+            <span class="m-card-label">면책금</span>
+            <span class="m-card-value" id="deductibleValue">-</span>
+          </div>
+        </div>
+        <button class="m-btn m-btn-primary m-mt-16" onclick="goToStep3()">다음</button>
+      </div>
+
+      <!-- Step 3: 시공점 배정 -->
+      <div class="m-step-content m-hidden" id="stepContent3">
+        <div class="m-card">
+          <div class="m-card-title">가장 가까운 시공점</div>
+          <div id="workshopList">
+            <div class="m-loading">시공점을 찾는 중...</div>
+          </div>
+        </div>
+        <button class="m-btn m-btn-secondary m-mt-16" onclick="openMap()">지도에서 보기</button>
+        <button class="m-btn m-btn-primary m-mt-16" onclick="submitReceipt()">접수 완료</button>
+      </div>
+
+      <!-- Step 4: 완료 -->
+      <div class="m-step-content m-hidden" id="stepContent4">
+        <div class="m-card m-text-center">
+          <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+          <div class="m-card-title">접수가 완료되었습니다</div>
+          <div class="m-card-body" style="margin-top: 16px;">
+            접수번호: <span id="receiptNumberResult">-</span>
+          </div>
+        </div>
+        <button class="m-btn m-btn-primary m-mt-16" onclick="goToStatus()">접수 현황으로 이동</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 탭 네비게이션 -->
+  <div class="m-bottom-nav">
+    <div class="m-bottom-nav-item" data-page="status">
+      <div class="m-bottom-nav-icon">📋</div>
+      <div class="m-bottom-nav-label">접수현황</div>
+    </div>
+    <div class="m-bottom-nav-item active" data-page="receive">
+      <div class="m-bottom-nav-icon">➕</div>
+      <div class="m-bottom-nav-label">접수</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="map">
+      <div class="m-bottom-nav-icon">📍</div>
+      <div class="m-bottom-nav-label">지도</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="message">
+      <div class="m-bottom-nav-icon">💬</div>
+      <div class="m-bottom-nav-label">메시지</div>
+    </div>
+    <div class="m-bottom-nav-item" data-page="more">
+      <div class="m-bottom-nav-icon">⋯</div>
+      <div class="m-bottom-nav-label">더보기</div>
+    </div>
+  </div>
+
+  <script src="/mobile/js/receive.js"></script>
+</body>
+</html>
+

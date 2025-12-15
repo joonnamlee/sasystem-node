@@ -1,0 +1,479 @@
+/* 모바일 전용 CSS - 카카오/토스 스타일 */
+
+:root {
+  --bg-primary: #F6F7F9;
+  --card-bg: #FFFFFF;
+  --text-primary: #222222;
+  --text-secondary: #666666;
+  --main-blue: #3B6EF6;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --border: #E5E7EB;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  padding-bottom: 60px; /* 하단 탭 공간 */
+  min-height: 100vh;
+}
+
+/* 상단 App Bar는 layout.css로 이동됨 */
+
+/* Drawer 메뉴는 layout.css로 이동됨 */
+
+/* 하단 탭 네비게이션 */
+.m-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 1000;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  pointer-events: auto !important;
+}
+
+.m-bottom-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 11px;
+  transition: all 0.2s;
+  min-height: 60px;
+  min-width: 44px;
+  pointer-events: auto !important;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.m-bottom-nav-item:active {
+  opacity: 0.7;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.m-bottom-nav-item.active {
+  color: var(--main-blue);
+}
+
+.m-bottom-nav-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.m-bottom-nav-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* 컨텐츠 영역 */
+.m-content {
+  padding-top: 48px;
+  padding-bottom: 16px;
+  min-height: calc(100vh - 48px - 60px);
+}
+
+.m-container {
+  padding: 16px;
+  max-width: 100%;
+}
+
+/* 카드 스타일 */
+.m-card {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.m-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.m-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.m-card-body {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.m-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  min-height: 44px;
+}
+
+.m-card-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.m-card-value {
+  font-size: 14px;
+  color: var(--text-primary);
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+}
+
+/* KPI 카드 (토스 스타일) */
+.m-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.m-kpi-card {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.m-kpi-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.m-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 버튼 스타일 */
+.m-btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.m-btn:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+.m-btn-primary {
+  background: var(--main-blue);
+  color: white;
+}
+
+.m-btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.m-btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.m-btn-secondary {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+/* 플로팅 버튼 */
+.m-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--main-blue);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(59, 110, 246, 0.4);
+  font-size: 24px;
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+}
+
+.m-fab:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(59, 110, 246, 0.3);
+}
+
+/* 상태 뱃지 */
+.m-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.m-badge-success {
+  background: rgba(34, 197, 94, 0.1);
+  color: var(--success);
+}
+
+.m-badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+.m-badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+.m-badge-info {
+  background: rgba(59, 110, 246, 0.1);
+  color: var(--main-blue);
+}
+
+/* 입력 필드 */
+.m-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 48px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.m-input:focus {
+  outline: none;
+  border-color: var(--main-blue);
+  box-shadow: 0 0 0 3px rgba(59, 110, 246, 0.1);
+}
+
+.m-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  min-height: 120px;
+  resize: vertical;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.m-textarea:focus {
+  outline: none;
+  border-color: var(--main-blue);
+  box-shadow: 0 0 0 3px rgba(59, 110, 246, 0.1);
+}
+
+/* 필터 */
+.m-filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.m-filter-select {
+  flex: 1;
+  min-width: 100px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  min-height: 44px;
+}
+
+/* 접수 카드 (클릭 가능) */
+.m-receipt-card {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 44px;
+  touch-action: manipulation;
+  pointer-events: auto !important;
+}
+
+.m-receipt-card:active {
+  transform: scale(0.98);
+  background: var(--bg-primary);
+}
+
+.m-receipt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.m-receipt-number {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* 단계 표시 */
+.m-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 0 16px;
+}
+
+.m-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.m-step::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--border);
+  z-index: 0;
+}
+
+.m-step:last-child::after {
+  display: none;
+}
+
+.m-step-number {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+.m-step.active .m-step-number {
+  background: var(--main-blue);
+  color: white;
+}
+
+.m-step-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.m-step.active .m-step-label {
+  color: var(--main-blue);
+  font-weight: 600;
+}
+
+/* 빈 상태 */
+.m-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+}
+
+.m-empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.m-empty-state-text {
+  font-size: 14px;
+}
+
+/* 로딩 */
+.m-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+/* 유틸리티 */
+.m-hidden {
+  display: none !important;
+}
+
+.m-mt-16 {
+  margin-top: 16px;
+}
+
+.m-mb-16 {
+  margin-bottom: 16px;
+}
+
+.m-text-center {
+  text-align: center;
+}
+
