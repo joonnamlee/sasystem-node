@@ -363,22 +363,129 @@
       color: #6b7280;
     }
 
+    /* Mobile Styles */
     @media (max-width: 768px) {
+      body {
+        padding-bottom: 80px;
+      }
+
       .container {
-        padding: 16px;
+        padding: 12px;
+        margin: 0;
+        border-radius: 0;
       }
 
       .header {
         flex-direction: column;
         align-items: stretch;
+        margin-bottom: 16px;
+      }
+
+      .header h1 {
+        font-size: 20px;
       }
 
       .btn-new {
         width: 100%;
+        padding: 14px;
+        font-size: 16px;
+        margin-bottom: 16px;
+      }
+
+      /* 통계 카드 1열 리스트 */
+      .stats-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stat-card-value {
+        font-size: 24px;
+      }
+
+      /* 테이블을 카드 리스트로 변환 */
+      .table-container {
+        border: none;
+        overflow: visible;
+        margin-bottom: 80px;
       }
 
       table {
+        display: none;
+      }
+
+      .m-card-list {
+        display: block;
+      }
+
+      .m-card-item {
+        background: white;
+        border: 1px solid #e1e8ed;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .m-card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px solid #f3f4f6;
+      }
+
+      .m-card-row:last-child {
+        border-bottom: none;
+      }
+
+      .m-card-label {
         font-size: 12px;
+        color: #6b7280;
+        font-weight: 500;
+        min-width: 80px;
+      }
+
+      .m-card-value {
+        font-size: 14px;
+        color: #1a202c;
+        text-align: right;
+        flex: 1;
+      }
+
+      .m-card-header {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a202c;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e1e8ed;
+      }
+
+      /* 하단 고정 버튼 */
+      .m-fixed-actions {
+        position: fixed;
+        bottom: 56px;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid #e1e8ed;
+        padding: 12px 16px;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+        z-index: 999;
+        display: flex;
+        gap: 8px;
+      }
+
+      .m-fixed-actions .btn {
+        flex: 1;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
       }
 
       th, td {
@@ -388,6 +495,36 @@
       .mobile-hide {
         display: none;
       }
+
+      .date-filter-box {
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+
+      .date-filter-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .date-filter-item {
+        width: 100%;
+      }
+
+      .filters {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+
+      .filters > * {
+        width: 100%;
+      }
+    }
+
+    /* Desktop: 카드 리스트 숨기기 */
+    .m-card-list {
+      display: none;
     }
 
     .btn-delete {
@@ -761,6 +898,14 @@
         </tr>
       </tbody>
     </table>
+    <!-- Mobile Card List -->
+    <div class="m-card-list" id="mAccidentCardList">
+      <div style="text-align: center; padding: 40px; color: #9ca3af;">로딩 중...</div>
+    </div>
+  </div>
+  <!-- Mobile Fixed Action Buttons -->
+  <div class="m-fixed-actions" id="mFixedActions" style="display: none;">
+    <button class="btn-new" onclick="createNew()">➕ 신규 접수 만들기</button>
   </div>
 
   <div class="pagination" id="pagination"></div>
@@ -1090,7 +1235,12 @@ function renderTable() {
           </td>
         </tr>
       `;
+      const cardList = document.getElementById('mAccidentCardList');
+      if (cardList) {
+        cardList.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">검색 결과가 없습니다.</div>';
+      }
       renderPagination();
+      updateMobileFixedActions();
       return;
     }
 
@@ -1131,11 +1281,62 @@ function renderTable() {
       `;
     }).join('');
 
+    // 모바일 카드 리스트 렌더링
+    const cardList = document.getElementById('mAccidentCardList');
+    if (cardList) {
+      if (currentRecords.length === 0) {
+        cardList.innerHTML = '<div style="text-align: center; padding: 40px; color: #9ca3af;">검색 결과가 없습니다.</div>';
+      } else {
+        cardList.innerHTML = currentRecords.map((record, index) => {
+          const displayNo = escapeHtml(record.displayNo || '');
+          const recordId = record.id || '';
+          const caseNo = escapeHtml(record.caseNo || displayNo || '');
+          const status = record.status || '접수완료';
+          const warningInfo = checkWarningConditions(record, status);
+          const warningBadge = warningInfo.message ? `<span class="warning-badge">${warningInfo.message}</span>` : '';
+          
+          return `
+            <div class="m-card-item clickable-row ${warningInfo.class || ''}" 
+                 data-receipt-number="${caseNo}" 
+                 data-case-no="${caseNo}" 
+                 data-record-id="${recordId}" 
+                 data-status="${status}"
+                 onclick="window.location.href='/pages/accident/index.html?receipt_number=' + encodeURIComponent('${caseNo}')">
+              <div class="m-card-header">${displayNo}${warningBadge}</div>
+              <div class="m-card-row">
+                <span class="m-card-label">접수일시</span>
+                <span class="m-card-value">${escapeHtml(record.accidentTime || '')}</span>
+              </div>
+              <div class="m-card-row">
+                <span class="m-card-label">차량번호</span>
+                <span class="m-card-value">${escapeHtml(record.carNumber || '')}</span>
+              </div>
+              <div class="m-card-row">
+                <span class="m-card-label">차종</span>
+                <span class="m-card-value">${escapeHtml(record.carModel || '')}</span>
+              </div>
+              <div class="m-card-row">
+                <span class="m-card-label">현재상태</span>
+                <span class="m-card-value">${renderStatusBadge(status, true)}</span>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 12px;" onclick="event.stopPropagation()">
+                <button class="btn-message" onclick="openMessagePage('${recordId}', '${caseNo}', event)" style="flex: 1; padding: 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">💬 메시지</button>
+                ${canDeleteRecord(status) ? `<button class="btn-delete" onclick="deleteRecord(${JSON.stringify(recordId)}, event)" style="flex: 1; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer;">🗑️ 삭제</button>` : ''}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
     // 페이지네이션 렌더링
     renderPagination();
     
     // 테이블 행 클릭 이벤트 리스너 등록
     setupRowClickHandlers();
+    
+    // 모바일 고정 버튼 업데이트
+    updateMobileFixedActions();
   } finally {
     isRendering = false;
   }
@@ -1180,6 +1381,31 @@ function setupRowClickHandlers() {
       window.location.href = url;
     });
   });
+}
+
+// 모바일 고정 버튼 업데이트
+function updateMobileFixedActions() {
+  const isMobile = window.innerWidth <= 768;
+  if (!isMobile) return;
+  
+  const fixedActions = document.getElementById('mFixedActions');
+  if (fixedActions) {
+    fixedActions.style.display = 'flex';
+  }
+}
+
+// 윈도우 리사이즈 시 모바일 버튼 업데이트
+window.addEventListener('resize', () => {
+  updateMobileFixedActions();
+});
+
+// 페이지 로드 시 모바일 버튼 초기화
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    updateMobileFixedActions();
+  });
+} else {
+  updateMobileFixedActions();
 }
 
 // 페이지네이션 렌더링

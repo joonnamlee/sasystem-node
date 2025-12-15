@@ -84,25 +84,165 @@
         height: 100%;
     }
 
+    /* Mobile Header */
+    .m-header {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: white;
+        border-bottom: 1px solid #e1e8ed;
+        z-index: 1000;
+        align-items: center;
+        padding: 0 16px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .m-header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .m-header-back {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #1a202c;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .m-header-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1a202c;
+    }
+
+    .m-header-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+    }
+
+    .m-user-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #3b82f6;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    /* Mobile Bottom Navigation */
+    .m-bottom-nav {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: white;
+        border-top: 1px solid #e1e8ed;
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: space-around;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+    }
+
+    .m-nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 4px;
+        cursor: pointer;
+        color: #6b7280;
+        transition: color 0.2s;
+        text-decoration: none;
+        min-width: 0;
+    }
+
+    .m-nav-item.active {
+        color: #3b82f6;
+    }
+
+    .m-nav-label {
+        font-size: 13px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: center;
+    }
+
+    .m-more-menu {
+        position: fixed;
+        bottom: 72px;
+        right: 16px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        padding: 8px 0;
+        min-width: 160px;
+        display: none;
+        z-index: 1001;
+    }
+
+    .m-more-menu.active {
+        display: block;
+    }
+
+    .m-more-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        color: #1a202c;
+        font-size: 14px;
+        transition: background 0.2s;
+    }
+
+    .m-more-item:hover {
+        background: #f3f4f6;
+    }
+
     /* Mobile Responsive */
     @media (max-width: 768px) {
         body {
-            flex-direction: column;
+            padding-bottom: 56px;
         }
 
         .sidebar {
-            width: 100%;
-            flex-direction: row;
-            overflow-x: auto;
-            height: auto;
-            padding: 12px;
+            display: none !important;
         }
 
-        .menu-item {
-            flex: 1;
-            margin-right: 8px;
-            text-align: center;
-            white-space: nowrap;
+        .content {
+            width: 100%;
+            padding-top: 56px;
+        }
+
+        iframe {
+            height: calc(100vh - 112px);
+        }
+
+        .m-header {
+            display: flex;
+        }
+
+        .m-bottom-nav {
+            display: flex;
         }
     }
 </style>
@@ -110,23 +250,74 @@
 
 <body>
 
+<!-- Mobile Header -->
+<div class="m-header">
+    <div class="m-header-left">
+        <button class="m-header-back" onclick="goBack()">←</button>
+        <div class="m-header-title" id="mPageTitle">접수 현황</div>
+    </div>
+    <div class="m-header-right">
+        <div class="m-user-icon" id="mUserIcon">A</div>
+    </div>
+</div>
+
+<!-- Mobile Bottom Navigation -->
+<div class="m-bottom-nav">
+    <div class="m-nav-item" onclick="mNavigate('status')">
+        <div class="m-nav-label">접수 현황</div>
+    </div>
+    <div class="m-nav-item" onclick="mNavigate('accident')">
+        <div class="m-nav-label">사고 접수</div>
+    </div>
+    <div class="m-nav-item" onclick="mNavigate('map')">
+        <div class="m-nav-label">시공점 지도</div>
+    </div>
+    <div class="m-nav-item" onclick="mNavigate('message')">
+        <div class="m-nav-label">메시지</div>
+    </div>
+    <div class="m-nav-item" onclick="toggleMoreMenu()">
+        <div class="m-nav-label">더보기</div>
+    </div>
+</div>
+
+<!-- More Menu -->
+<div class="m-more-menu" id="mMoreMenu">
+    <div class="m-more-item admin-only" onclick="mNavigate('workshop'); toggleMoreMenu();">시공점 관리</div>
+    <div class="m-more-item admin-only" onclick="mNavigate('vehicle'); toggleMoreMenu();">차량 관리</div>
+    <div class="m-more-item admin-only" onclick="mNavigate('settlement'); toggleMoreMenu();">정산 관리</div>
+    <div class="m-more-item" onclick="mNavigate('stats'); toggleMoreMenu();">통계 / 리포트</div>
+    <div class="m-more-item admin-only" onclick="mNavigate('users'); toggleMoreMenu();">유저 관리</div>
+</div>
+
 <div class="sidebar">
     <h2>유리 교체 대시보드</h2>
 
-    <div class="menu-item active" onclick="loadPage('accident', event)">
-        사고 접수 시스템
+    <div class="menu-item active" onclick="loadPage('status', event)">
+        접수 현황
     </div>
 
-    <div class="menu-item" onclick="loadPage('message', event)">
-        💬 메시지 보내기
+    <div class="menu-item" onclick="loadPage('accident', event)">
+        사고 접수 시스템
     </div>
 
     <div class="menu-item" onclick="loadPage('map', event)">
         시공점 자동 배정 지도
     </div>
 
-    <div class="menu-item" onclick="loadPage('status', event)">
-        접수 현황
+    <div class="menu-item" onclick="loadPage('message', event)">
+        메시지 보내기
+    </div>
+
+    <div class="menu-item admin-only" onclick="loadPage('workshop', event)">
+        시공점 관리
+    </div>
+
+    <div class="menu-item admin-only" onclick="loadPage('vehicle', event)">
+        차량 관리
+    </div>
+
+    <div class="menu-item admin-only" onclick="loadPage('settlement', event)">
+        정산 관리
     </div>
 
     <div class="menu-item" onclick="loadPage('stats', event)">
@@ -141,7 +332,7 @@
 </div>
 
 <div class="content">
-    <iframe id="contentFrame" src="./pages/accident/index.html"></iframe>
+    <iframe id="contentFrame" src="./pages/status/index.html"></iframe>
 </div>
 
 <script>
@@ -154,7 +345,7 @@ async function loadPage(page, e) {
     const role = session?.user?.app_metadata?.role;
 
     // admin만 접근 가능한 페이지
-    const adminOnlyPages = ["users"];
+    const adminOnlyPages = ["users", "workshop", "vehicle", "settlement"];
     if (adminOnlyPages.includes(page) && role !== "admin") {
         alert("관리자만 접근 가능한 페이지입니다.");
         // 대시보드로 리다이렉트 (accident 페이지로)
@@ -173,6 +364,12 @@ async function loadPage(page, e) {
         frame.src = "./pages/message/index.html";
     } else if (page === "map") {
         frame.src = "./pages/installer/embed.html";
+    } else if (page === "workshop") {
+        frame.src = "./pages/installer/management.html";
+    } else if (page === "vehicle") {
+        frame.src = "./vehicle-management.html";
+    } else if (page === "settlement") {
+        frame.src = "./settlement-management.html";
     } else if (page === "templates") {
         frame.src = "./pages/templates/index.html";
     } else if (page === "status") {
@@ -188,9 +385,14 @@ async function loadPage(page, e) {
         e.target.classList.add("active");
     }
     
+    // 모바일 네비게이션 업데이트
+    updateMobileNav(page);
+    updateMobileHeader();
+    
     // 페이지 변경 시 iframe 로드 처리
     frame.addEventListener('load', () => {
         // iframe 로드 완료
+        updateMobileHeader();
     }, { once: true });
 }
 
@@ -316,7 +518,91 @@ document.addEventListener('DOMContentLoaded', async () => {
   const frame = document.getElementById("contentFrame");
   frame.addEventListener('load', () => {
     // iframe 로드 완료
+    updateMobileHeader();
   });
+
+  // 모바일 헤더 사용자 아이콘 업데이트
+  const userIcon = document.getElementById('mUserIcon');
+  if (userIcon && currentUser) {
+    const name = currentUser.email || currentUser.user_metadata?.name || 'U';
+    userIcon.textContent = name.charAt(0).toUpperCase();
+  }
+});
+
+// 모바일 네비게이션
+function mNavigate(page) {
+  loadPage(page, null);
+  updateMobileNav(page);
+  updateMobileHeader();
+  toggleMoreMenu(false);
+}
+
+// 모바일 네비게이션 활성화 업데이트
+function updateMobileNav(activePage) {
+  const navItems = document.querySelectorAll('.m-bottom-nav .m-nav-item');
+  navItems.forEach(item => item.classList.remove('active'));
+  
+  const pageMap = {
+    'status': 0,
+    'accident': 1,
+    'map': 2,
+    'message': 3
+  };
+  
+  if (pageMap[activePage] !== undefined) {
+    navItems[pageMap[activePage]]?.classList.add('active');
+  }
+}
+
+// 모바일 헤더 제목 업데이트
+function updateMobileHeader() {
+  const frame = document.getElementById("contentFrame");
+  const titleEl = document.getElementById("mPageTitle");
+  
+  const pageTitles = {
+    'accident': '사고 접수',
+    'map': '시공점 지도',
+    'settlement': '정산 관리',
+    'vehicle': '차량 관리',
+    'status': '접수 현황',
+    'stats': '통계 / 리포트',
+    'workshop': '시공점 관리',
+    'users': '유저 관리',
+    'message': '메시지 보내기'
+  };
+  
+  const currentSrc = frame.src;
+  for (const [page, title] of Object.entries(pageTitles)) {
+    if (currentSrc.includes(page) || currentSrc.includes(page.replace('workshop', 'installer'))) {
+      titleEl.textContent = title;
+      break;
+    }
+  }
+}
+
+// 더보기 메뉴 토글
+function toggleMoreMenu(show) {
+  const menu = document.getElementById('mMoreMenu');
+  if (show === undefined) {
+    menu.classList.toggle('active');
+  } else {
+    menu.classList.toggle('active', show);
+  }
+}
+
+// 뒤로가기
+function goBack() {
+  window.history.back();
+}
+
+// 클릭 외부 영역에서 더보기 메뉴 닫기
+document.addEventListener('click', (e) => {
+  const moreMenu = document.getElementById('mMoreMenu');
+  const moreNavItem = document.querySelector('.m-nav-item:last-child');
+  
+  if (moreMenu && moreNavItem && !moreMenu.contains(e.target) && !moreNavItem.contains(e.target)) {
+    moreMenu.classList.remove('active');
+  }
 });
 </script>
 

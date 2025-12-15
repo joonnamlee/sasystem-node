@@ -137,6 +137,87 @@
       color: #6b7280;
     }
 
+    /* Mobile Styles */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+        padding-bottom: 80px;
+      }
+
+      .container {
+        padding: 12px;
+        margin: 0;
+        border-radius: 0;
+      }
+
+      h1 {
+        font-size: 20px;
+        margin-bottom: 16px;
+      }
+
+      .filters {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+
+      .filters > * {
+        width: 100%;
+      }
+
+      .summary-cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .summary-card {
+        padding: 16px;
+      }
+
+      .summary-card .value {
+        font-size: 24px;
+      }
+
+      .section {
+        margin-bottom: 24px;
+      }
+
+      .section h3 {
+        font-size: 16px;
+        margin-bottom: 12px;
+      }
+
+      .stats-table {
+        font-size: 12px;
+      }
+
+      .stats-table th,
+      .stats-table td {
+        padding: 8px 6px;
+      }
+
+      .charts-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .chart-container {
+        padding: 12px;
+      }
+
+      .header-actions {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .header-actions button {
+        width: 100%;
+      }
+    }
+
     .section {
       margin-bottom: 32px;
     }

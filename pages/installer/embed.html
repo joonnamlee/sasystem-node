@@ -438,6 +438,8 @@
       const { data, error } = await window.supabaseClient
         .from("installer_locations")
         .select("*")
+        .eq("is_active", true)
+        .order("priority", { ascending: true })
         .order("seq", { ascending: true });
 
       checkError(error);
